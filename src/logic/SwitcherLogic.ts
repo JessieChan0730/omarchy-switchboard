@@ -40,11 +40,11 @@ export function fillWorkspaceSlots(snapshot: DesktopSnapshot, slots: number): re
   return out;
 }
 
-export function workspaceCandidates(snapshot: DesktopSnapshot, history: readonly string[], slots: number): readonly WorkspaceRecord[] {
-  const scope = fillWorkspaceSlots(snapshot, slots).filter((w) => snapshot.monitors.length > 1 || w.monitorKey === snapshot.sourceMonitorKey);
+export function workspaceCandidates(snapshot: DesktopSnapshot, history: readonly string[]): readonly WorkspaceRecord[] {
+  const scope = snapshot.workspaces.filter((w) => !w.isSpecial && w.windowKeys.length > 0
+    && (snapshot.monitors.length > 1 || w.monitorKey === snapshot.sourceMonitorKey));
   const previous = history.find((key) => key !== snapshot.currentWorkspaceKey && scope.some((w) => w.key === key));
   const rank = (w: WorkspaceRecord): number => {
-    if (w.windowKeys.length === 0) return 1000000;
     if (w.key === snapshot.currentWorkspaceKey) return -2;
     if (w.key === previous) return -1;
     const i = history.indexOf(w.key);

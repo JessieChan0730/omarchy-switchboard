@@ -18,41 +18,61 @@ TestCase {
         compare(keys(Logic.windowCandidates(desktop(false), ["window:5", "window:1"])), ["window:3"])
         compare(keys(Logic.windowCandidates(desktop(true), ["window:5", "window:1"])), ["window:3", "window:5", "window:1"])
     }
-    function test_workspacePriorityAndLegalSlots() {
-        const queue = Logic.workspaceCandidates(desktop(false), ["workspace:3", "workspace:1", "workspace:5"], 10)
-        compare(keys(queue).slice(0, 4), ["workspace:3", "workspace:1", "workspace:5", "workspace:2"])
-        compare(queue.length, 10)
+    function test_workspacePriorityOnlyIncludesOccupied() {
+        const queue = Logic.workspaceCandidates(desktop(false), ["workspace:3", "workspace:1", "workspace:5"])
+        compare(keys(queue), ["workspace:3", "workspace:1", "workspace:5"])
         compare(queue.filter(function(w) { return w.id > 10 }).length, 0)
         compare(desktop(false).workspaces.length, 3)
     }
+    function test_existingEmptyWorkspaceIsHidden() {
+        const snap = desktop(false)
+        snap.workspaces.push({key: "workspace:2", id: 2, name: "2", monitorKey: "left", localSlot: 2, windowKeys: [], exists: true, isSpecial: false})
+        const queue = Logic.workspaceCandidates(snap, ["workspace:3", "workspace:2", "workspace:1"])
+        compare(keys(queue), ["workspace:3", "workspace:1", "workspace:5"])
+        compare(snap.workspaces.length, 4)
+    }
     function test_multiMonitorQueueIsUnified() {
-        const queue = Logic.workspaceCandidates(desktop(true), ["workspace:3", "workspace:11", "workspace:5", "workspace:1"], 10)
-        compare(keys(queue).slice(0, 4), ["workspace:3", "workspace:11", "workspace:5", "workspace:1"])
-        compare(queue.length, 20)
+        const snap = desktop(true)
+        snap.workspaces.push({key: "workspace:12", id: 12, name: "12", monitorKey: "right", localSlot: 2, windowKeys: [], exists: true, isSpecial: false})
+        const queue = Logic.workspaceCandidates(snap, ["workspace:3", "workspace:12", "workspace:11", "workspace:5", "workspace:1"])
+        compare(keys(queue), ["workspace:3", "workspace:11", "workspace:5", "workspace:1"])
     }
     function test_emptyCurrentDoesNotDisplaceOccupiedWorkspaces() {
         const snap = desktop(false)
-        snap.currentWorkspaceKey = "workspace:2"
-        const queue = Logic.workspaceCandidates(snap, ["workspace:2", "workspace:1"], 10)
-        compare(queue[0].key, "workspace:1")
-        compare(Logic.initialSelection(queue, "workspace:2", 1, true), 0)
-        compare(Logic.initialSelection(queue, "workspace:2", -1, true), queue.length - 1)
+        snap.currentWorkspaceKey = "workspace:5"
+        snap.windows = snap.windows.filter(function(w) { return w.workspaceKey !== "workspace:5" })
+        snap.workspaces.find(function(w) { return w.key === "workspace:5" }).windowKeys = []
+        const queue = Logic.workspaceCandidates(snap, ["workspace:5", "workspace:1"])
+        compare(keys(queue), ["workspace:1", "workspace:3"])
+        compare(Logic.initialSelection(queue, snap.currentWorkspaceKey, 1), 0)
+        compare(Logic.initialSelection(queue, snap.currentWorkspaceKey, -1), queue.length - 1)
     }
-    function test_allEmptyUsesCurrentAnchor() {
+    function test_allEmptyHasNoCandidatesOrSelection() {
         const snap = desktop(false)
         snap.windows = []
         snap.workspaces.forEach(function(w) { w.windowKeys = [] })
-        const queue = Logic.workspaceCandidates(snap, [], 10)
-        compare(queue[0].id, 1)
-        compare(Logic.initialSelection(queue, "workspace:3", 1), 3)
-        compare(Logic.initialSelection(queue, "workspace:3", -1), 1)
+        const queue = Logic.workspaceCandidates(snap, [])
+        compare(queue.length, 0)
+        compare(Logic.initialSelection(queue, "workspace:3", 1), -1)
+        compare(Logic.initialSelection(queue, "workspace:3", -1), -1)
+    }
+    function test_singleOccupiedWorkspaceCyclesToItself() {
+        const snap = desktop(false)
+        snap.windows = snap.windows.filter(function(w) { return w.workspaceKey === "workspace:3" })
+        snap.workspaces.forEach(function(w) { if (w.key !== "workspace:3") w.windowKeys = [] })
+        const queue = Logic.workspaceCandidates(snap, ["workspace:1", "workspace:5"])
+        compare(keys(queue), ["workspace:3"])
+        compare(Logic.initialSelection(queue, "workspace:3", 1), 0)
+        compare(Logic.initialSelection(queue, "workspace:3", -1), 0)
+        compare(Logic.wrapIndex(0, 1, queue.length), 0)
+        compare(Logic.wrapIndex(0, -1, queue.length), 0)
     }
     function test_newWorkspaceEntryStaysOutOfCycle() {
         const snap = desktop(true)
         const create = Logic.newWorkspace(snap, "right", 10)
         compare(create.id, 12)
         compare(create.exists, false)
-        const queue = Logic.workspaceCandidates(snap, [], 10)
+        const queue = Logic.workspaceCandidates(snap, [])
         verify(!keys(queue).includes("create"))
         compare(Logic.wrapIndex(queue.length - 1, 1, queue.length), 0)
     }
@@ -90,11 +110,14 @@ TestCase {
         const snap = desktop(false)
         snap.workspaces.push({key: "special", id: -99, name: "special:scratchpad", monitorKey: "left", isSpecial: true})
         snap.workspaces.push({key: "named", id: -1000, name: "开发", monitorKey: "left", isSpecial: false})
+        snap.windows.push({key: "named-window", address: "0xab", monitorKey: "left", workspaceKey: "named"})
         snap.windows.push({key: "bad", address: "bad address", monitorKey: "left", workspaceKey: "workspace:1"})
         const clean = Logic.parseSnapshot(snap)
         verify(clean.workspaces.some(function(w) { return w.key === "named" && !w.isSpecial }))
         verify(!clean.windows.some(function(w) { return w.key === "bad" }))
-        verify(!Logic.workspaceCandidates(clean, [], 10).some(function(w) { return w.key === "special" }))
+        const queue = Logic.workspaceCandidates(clean, [])
+        verify(!queue.some(function(w) { return w.key === "special" }))
+        verify(queue.some(function(w) { return w.key === "named" }))
     }
     function test_twoObjectToggleAndClosedHistory() {
         let history = Logic.recordFocus(["a", "b", "c"], "b")

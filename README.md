@@ -3,8 +3,10 @@
 为 Omarchy 提供窗口切换面板与工作区概览，采用 **QML + TypeScript + Lua**。
 完整交互目标见 [计划书](计划书.md)。开发插件 ID 为 `jessie.switchboard`。
 
-当前开发版已接入真实 Hyprland 数据、窗口候选过滤、MRU、工作区网格与排序、合法空槽位、
-独立新建入口、窗口/工作区确认激活，以及两对象快速回切。面板支持 Tab/Shift+Tab、
+当前开发版已接入真实 Hyprland 数据、窗口候选过滤、MRU、工作区网格与排序、
+窗口/工作区确认激活，以及两对象快速回切。工作区概览只显示有窗口的工作区，
+隐藏空工作区，不显示顶部标题、底部新建入口和按键提示，面板高度随卡片行数调整。
+面板支持 Tab/Shift+Tab、
 方向键、Enter、Esc 和鼠标点击，并跟随 Omarchy 的颜色、字体、圆角和中英文设置。
 
 窗口卡片目前显示应用图标和标题，工作区卡片显示窗口几何布局占位。
@@ -54,7 +56,7 @@ QML 工具元数据的兼容处理仅写入仓库 `.cache/`，不改动系统源
 # 窗口面板：单屏只列出当前普通工作区窗口
 omarchy-shell shell summon jessie.switchboard '{"mode":"window"}'
 
-# 工作区网格：包含合法空槽位
+# 工作区网格：只显示有窗口的工作区
 omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
 
 # 反向初始选择
@@ -132,12 +134,13 @@ omarchy-shell jessie.switchboard settings '{"showMonitorLabels":false}'
 
 设置存放于用户 `shell.json` 的 `plugins[]` 中本插件对象，支持 `configVersion: 1`、
 `showWorkspaceLabels`、`showMonitorLabels` 和 `slotsPerMonitor`（1–10）。编号起点来自 Omarchy
-的显示器映射；缺少映射时只展示真实工作区，不猜测或创建编号段。跨显示器候选使用真实全局 ID，
+的显示器映射；缺少映射时使用真实工作区名称，不猜测编号段。跨显示器候选使用真实全局 ID，
 界面显示显示器和本地槽位。`bindingsEnabled` 由安装脚本管理，应结合 include 一起调整。
 缓存相关字段保留为后续捕获实现的配置，当前没有图像缓存。
 
-窗口与工作区历史独立维护；预览高亮和取消不改变历史。工作区新建入口不参加 Tab 循环，
-鼠标点击可创建，方向键明确选择后按 Enter 可创建；停留在新建入口时松开修饰键只关闭面板。
+窗口与工作区历史独立维护；预览高亮和取消不改变历史。工作区 Tab 循环和方向键仅选择
+概览中有窗口的卡片；全部为空时显示空状态，确认后关闭面板。工作区快速回切仍可返回
+历史中可合法创建的空编号槽位。
 目标确认前会重新验证身份和显示器，覆盖层释放输入后再激活，最多进行三次焦点核对。
 
 ### 项目结构

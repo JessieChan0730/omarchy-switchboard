@@ -21,7 +21,6 @@ Item {
     property var request: ({holdToConfirm: false, globalInput: false})
     property var pendingActivation: null
     property var pendingOpenRequest: null
-    property bool createSelected: false
     property string sourceMonitor: ""
     property string currentKey: ""
     property string previousKey: ""
@@ -29,9 +28,6 @@ Item {
     readonly property string pluginId: manifest ? manifest.id : "jessie.switchboard"
     readonly property string leaseToken: String(Date.now()) + "-" + String(Math.random())
     readonly property bool bindingReady: config.supported && config.settings.bindingsEnabled && desktopAdapter.available
-    // qmllint disable missing-property
-    readonly property var createTarget: Logic.newWorkspace(snapshot, sourceMonitor, config.settings.slotsPerMonitor)
-    // qmllint enable missing-property
 
     function open(payloadJson: string): void {
         if (activation.busy || pendingActivation) { pendingOpenRequest = payloadJson; return }
@@ -50,14 +46,12 @@ Item {
         const history = mode === "window" ? desktopAdapter.windowHistory : desktopAdapter.workspaceHistory
         previousKey = history.find(function(k) { return k !== currentKey }) || ""
         // qmllint disable missing-property
-        candidates = errorKey ? [] : mode === "window" ? Logic.windowCandidates(snapshot, history) : Logic.workspaceCandidates(snapshot, history, config.settings.slotsPerMonitor)
+        candidates = errorKey ? [] : mode === "window" ? Logic.windowCandidates(snapshot, history) : Logic.workspaceCandidates(snapshot, history)
         // qmllint enable missing-property
-        createSelected = false
         desktopAdapter.suppressHistory = true
         session.begin(next, {sourceMonitorKey: sourceMonitor, originWindowKey: snapshot.currentWindowKey, originWorkspaceKey: snapshot.currentWorkspaceKey})
         opened = true
-        const occupiedFirst = mode === "workspace" && candidates.some(function(w) { return w.windowKeys.length > 0 }) && !candidates.some(function(w) { return w.key === currentKey && w.windowKeys.length > 0 })
-        session.ready(candidates.map(function(c) { return c.key }), currentKey, occupiedFirst)
+        session.ready(candidates.map(function(c) { return c.key }), currentKey, false)
         Qt.callLater(function() {
             if (!root.opened) return
             keyCatcher.forceActiveFocus()
@@ -78,17 +72,14 @@ Item {
     }
     function step(direction: int): void {
         if (!opened) return
-        createSelected = false
         session.step(direction)
     }
     function select(index: int): void {
-        createSelected = false
         session.select(index)
         session.confirm()
     }
     function confirm(): void {
-        if (createSelected) createWorkspace()
-        else session.confirm()
+        session.confirm()
     }
     function commit(key: string): void {
         const candidate = candidates.find(function(c) { return c.key === key })
@@ -100,10 +91,6 @@ Item {
         // Unmap the overlay and give Wayland a turn to relinquish exclusive keyboard focus.
         dismiss()
         activateTimer.restart()
-    }
-    function createWorkspace(): void {
-        if (!opened || !createTarget) return
-        queueActivation({kind: "workspace", key: createTarget.key, workspace: createTarget})
     }
     function previous(kind: string): void {
         if (opened || activation.busy || pendingActivation) return
@@ -120,14 +107,9 @@ Item {
     }
     function navigate(key: int): void {
         const columns = mode === "workspace" ? workspaceView.columns : windowView.columns
-        if (createSelected) {
-            if (key === Qt.Key_Up) { createSelected = false; session.select(Math.max(0, candidates.length - 1)) }
-            return
-        }
         const delta = key === Qt.Key_Left ? -1 : key === Qt.Key_Right ? 1 : key === Qt.Key_Up ? -columns : columns
         const index = session.selectedIndex + delta
-        if (mode === "workspace" && key === Qt.Key_Down && index >= candidates.length) createSelected = true
-        else session.select(Math.max(0, Math.min(candidates.length - 1, index)))
+        session.select(Math.max(0, Math.min(candidates.length - 1, index)))
     }
     function queryModifiers(): void {
         if (!opened || !request.holdToConfirm || modifierProc.running) return
@@ -186,8 +168,7 @@ Item {
             onStreamFinished: {
                 if (!root.opened || modifierProc.gestureId !== session.state.sessionId) return
                 if (text.trim() === "false") {
-                    if (root.createSelected) root.dismiss()
-                    else session.confirm()
+                    session.confirm()
                 }
                 // An unsupported query never commits by timeout. Enter and Esc remain available.
             }
@@ -220,7 +201,7 @@ Item {
         Rectangle {
             anchors.centerIn: parent
             width: Math.min(parent.width - 48, 1000)
-            height: Math.min(parent.height - 64, root.mode === "workspace" ? 800 : 570)
+            height: Math.min(parent.height - 64, root.mode === "workspace" ? workspaceView.implicitHeight + 40 : 570)
             radius: theme.cornerRadius
             color: theme.backgroundColor
             border.color: theme.borderColor
@@ -240,15 +221,16 @@ Item {
                 }
                 Components.PlainText {
                     id: title
+                    visible: root.mode === "window"
                     width: parent.width
-                    text: strings.t(root.mode === "workspace" ? "workspace.title" : "window.title") + " · " + root.sourceMonitor
+                    text: strings.t("window.title") + " · " + root.sourceMonitor
                     color: theme.foregroundColor
                     font.family: theme.fontFamily
                     font.pixelSize: theme.titleSize
                 }
                 Components.WindowSwitcher {
                     id: windowView
-                    anchors { top: title.bottom; topMargin: 16; left: parent.left; right: parent.right; bottom: hint.top; bottomMargin: 16 }
+                    anchors { top: title.bottom; topMargin: 16; left: parent.left; right: parent.right; bottom: parent.bottom }
                     visible: root.mode === "window"
                     candidates: root.mode === "window" ? root.candidates : []
                     snapshot: root.snapshot
@@ -261,30 +243,17 @@ Item {
                 }
                 Components.WorkspaceSwitcher {
                     id: workspaceView
-                    anchors { top: title.bottom; topMargin: 16; left: parent.left; right: parent.right; bottom: hint.top; bottomMargin: 16 }
+                    anchors.fill: parent
                     visible: root.mode === "workspace"
                     candidates: root.mode === "workspace" ? root.candidates : []
                     snapshot: root.snapshot
                     selectedIndex: session.selectedIndex
                     currentKey: root.currentKey
                     previousKey: root.previousKey
-                    sourceMonitor: root.sourceMonitor
-                    createSelected: root.createSelected
-                    canCreate: root.createTarget !== null
                     showMonitorLabels: config.settings.showMonitorLabels
-                    emptyText: strings.t(root.errorKey || "workspace.empty")
+                    emptyText: strings.t(root.errorKey || "workspace.none")
                     foregroundColor: theme.foregroundColor
                     onCandidateClicked: function(index) { root.select(index) }
-                    onCreateClicked: root.createWorkspace()
-                }
-                Components.PlainText {
-                    id: hint
-                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                    text: strings.t(root.request.holdToConfirm ? "hint.hold" : "hint.select")
-                    color: theme.foregroundColor
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.bodySize
-                    wrapMode: Text.WordWrap
                 }
             }
         }
