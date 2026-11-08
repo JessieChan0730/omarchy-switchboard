@@ -1,0 +1,6 @@
+{
+  "window.title": "窗口",
+  "workspace.title": "工作区",
+  "status.prototype": "开发预览：窗口与工作区切换尚未启用。",
+  "hint.dismiss": "按 Esc 关闭。"
+}

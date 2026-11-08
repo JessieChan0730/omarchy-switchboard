@@ -1,0 +1,26 @@
+{
+  "name": "omarchy-switchboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Omarchy window and workspace switcher scaffold",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "typecheck": "tsx scripts/check.ts types",
+    "build": "tsx scripts/build.ts",
+    "dev": "tsx scripts/build.ts --watch",
+    "lint:qml": "tsx scripts/check.ts lint",
+    "test:qt": "tsx scripts/check.ts qt",
+    "validate": "tsx scripts/check.ts manifest",
+    "check": "tsx scripts/check.ts all"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "jessie.switchboard",
+  "name": "Omarchy Switchboard",
+  "version": "0.1.0",
+  "author": "Jessie",
+  "description": "Development scaffold for window and workspace previews",
+  "kinds": ["overlay"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Overlay.qml"
+  }
+}
