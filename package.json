@@ -2,7 +2,7 @@
   "name": "omarchy-switchboard",
   "version": "0.1.0",
   "private": true,
-  "description": "Omarchy window and workspace switcher scaffold",
+  "description": "Omarchy window switcher and workspace overview",
   "type": "module",
   "license": "MIT",
   "engines": {

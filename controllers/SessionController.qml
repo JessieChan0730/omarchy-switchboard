@@ -3,32 +3,34 @@ import "../generated/Logic.mjs" as Logic
 
 QtObject {
     id: controller
-
-    // ESM export lists are resolved at runtime by the Qt bridge tests.
     // qmllint disable missing-property
     property var state: Logic.createIdleSession()
+    readonly property string phase: state.phase
+    readonly property int selectedIndex: state.phase === "selecting" ? state.selectedIndex : -1
+    property int deliveredSessionId: -1
+    signal commitRequested(string key)
+    signal emptyConfirmed()
+
+    function begin(request: var, context: var): void {
+        state = Logic.prepareSession(state.sessionId + 1, request, context)
+    }
+    function ready(keys: var, current: var, occupiedFirst: bool): void {
+        state = Logic.resolveSession(state, state.sessionId, keys, current, occupiedFirst)
+        deliver()
+    }
+    function step(direction: int): void { state = Logic.stepSession(state, state.sessionId, direction) }
+    function select(index: int): void { state = Logic.selectSession(state, index) }
+    function confirm(): void {
+        state = Logic.confirmSession(state, state.sessionId)
+        deliver()
+    }
+    function deliver(): void {
+        if (phase === "committing" && deliveredSessionId !== state.sessionId) {
+            deliveredSessionId = state.sessionId
+            commitRequested(state.targetKey)
+        }
+        else if (phase === "idle") emptyConfirmed()
+    }
+    function cancel(): void { state = Logic.cancelSession(state, state.sessionId) }
     // qmllint enable missing-property
-    readonly property string phase: controller.state.phase
-
-    signal snapshotRequested(int sessionId, string mode)
-
-    function begin(payloadJson: string): void {
-        // qmllint disable missing-property
-        const request = Logic.parseOpenRequest(payloadJson)
-        controller.state = Logic.prepareSession(controller.state.sessionId + 1, request, {
-            sourceMonitorKey: null,
-            originWindowKey: null,
-            originWorkspaceKey: null
-        })
-        // qmllint enable missing-property
-        controller.snapshotRequested(controller.state.sessionId, request.mode)
-    }
-
-    function cancel(): void {
-        // qmllint disable missing-property
-        controller.state = Logic.cancelSession(controller.state, controller.state.sessionId)
-        // qmllint enable missing-property
-    }
-
-    // P0: connect snapshot readiness, modifier release and exactly-once commit.
 }

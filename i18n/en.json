@@ -1,6 +1,16 @@
 {
   "window.title": "Windows",
+  "window.empty": "No windows in this scope",
   "workspace.title": "Workspaces",
-  "status.prototype": "Development preview — switching is not enabled yet.",
-  "hint.dismiss": "Press Esc to close."
+  "workspace.label": "Workspace %1",
+  "workspace.empty": "Empty workspace",
+  "workspace.count": { "one": "%1 window", "other": "%1 windows" },
+  "workspace.current": "Current",
+  "workspace.previous": "Previous",
+  "workspace.create": "+ New workspace",
+  "workspace.capacity": "No unused workspace slots",
+  "status.unavailable": "Hyprland is unavailable or its configuration is incompatible.",
+  "status.activationFailed": "The target could not be activated. It may have closed.",
+  "hint.select": "Tab / Shift+Tab · Arrow keys · Enter to switch · Esc to cancel",
+  "hint.hold": "Hold Alt or Super to select · Release to switch · Esc to cancel"
 }

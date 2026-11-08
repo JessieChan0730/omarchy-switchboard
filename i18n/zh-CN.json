@@ -1,6 +1,16 @@
 {
   "window.title": "窗口",
+  "window.empty": "当前范围内没有可切换的窗口",
   "workspace.title": "工作区",
-  "status.prototype": "开发预览：窗口与工作区切换尚未启用。",
-  "hint.dismiss": "按 Esc 关闭。"
+  "workspace.label": "工作区 %1",
+  "workspace.empty": "空工作区",
+  "workspace.count": { "other": "%1 个窗口" },
+  "workspace.current": "当前",
+  "workspace.previous": "上一个",
+  "workspace.create": "+ 新建工作区",
+  "workspace.capacity": "没有未使用的工作区槽位",
+  "status.unavailable": "Hyprland 不可用或配置版本不兼容。",
+  "status.activationFailed": "无法激活目标，目标可能已经关闭。",
+  "hint.select": "Tab / Shift+Tab · 方向键 · Enter 切换 · Esc 取消",
+  "hint.hold": "按住 Alt 或 Super 选择 · 松开切换 · Esc 取消"
 }

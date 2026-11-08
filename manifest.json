@@ -4,7 +4,7 @@
   "name": "Omarchy Switchboard",
   "version": "0.1.0",
   "author": "Jessie",
-  "description": "Development scaffold for window and workspace previews",
+  "description": "Window switcher and workspace overview development preview",
   "kinds": ["overlay"],
   "keepLoaded": true,
   "entryPoints": {

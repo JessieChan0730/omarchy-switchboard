@@ -1,5 +1,5 @@
-export { wrapIndex } from "./SwitcherLogic";
+export { wrapIndex, windowCandidates, workspaceCandidates, fillWorkspaceSlots, initialSelection, newWorkspace } from "./SwitcherLogic";
 export { recordFocus, previousObject } from "./HistoryLogic";
-export { createIdleSession, prepareSession, cancelSession } from "./SessionLogic";
+export { createIdleSession, prepareSession, cancelSession, stepSession, selectSession, confirmSession, resolveSession } from "./SessionLogic";
 export { fitGeometry } from "./WorkspaceLayout";
-export { DEFAULT_CONFIG, parseConfig, parseOpenRequest } from "./Validation";
+export { DEFAULT_CONFIG, parseConfig, parseOpenRequest, parseSnapshot, luaString } from "./Validation";

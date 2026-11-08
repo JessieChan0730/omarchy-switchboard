@@ -5,6 +5,7 @@ import type {
   SessionContext,
   SessionState,
 } from "../types/Protocol";
+import { initialSelection, wrapIndex } from "./SwitcherLogic";
 
 export function createIdleSession(sessionId = 0): IdleSession {
   return { phase: "idle", sessionId };
@@ -30,4 +31,33 @@ export function cancelSession(state: SessionState, sessionId: number): SessionSt
   return state.sessionId === sessionId ? createIdleSession(sessionId) : state;
 }
 
-// P0: snapshot/step/release/commit transitions depend on verified input ordering.
+export function stepSession(state: SessionState, sessionId: number, direction: number): SessionState {
+  if (state.sessionId !== sessionId) return state;
+  if (state.phase === "preparing") return { ...state, pendingSteps: state.pendingSteps + direction };
+  if (state.phase !== "selecting") return state;
+  return { ...state, selectedIndex: wrapIndex(state.selectedIndex, direction, state.candidateKeys.length) };
+}
+
+export function selectSession(state: SessionState, index: number): SessionState {
+  return state.phase === "selecting" && Number.isInteger(index) && index >= 0 && index < state.candidateKeys.length
+    ? { ...state, selectedIndex: index } : state;
+}
+
+export function confirmSession(state: SessionState, sessionId: number): SessionState {
+  if (state.sessionId !== sessionId) return state;
+  if (state.phase === "preparing") return { ...state, releasePending: true };
+  if (state.phase !== "selecting") return state;
+  const key = state.candidateKeys[state.selectedIndex];
+  return key ? { phase: "committing", sessionId, context: state.context, request: state.request,
+    releasePending: state.releasePending, targetKey: key } : createIdleSession(sessionId);
+}
+
+export function resolveSession(state: SessionState, sessionId: number, keys: readonly string[], current: string | null, occupiedFirst: boolean): SessionState {
+  if (state.phase !== "preparing" || state.sessionId !== sessionId) return state;
+  const initial = initialSelection(keys.map((key) => ({ key })), current, state.request.direction, occupiedFirst);
+  const selecting: SessionState = {
+    phase: "selecting", sessionId, context: state.context, request: state.request, releasePending: state.releasePending,
+    candidateKeys: keys.slice(), selectedIndex: wrapIndex(initial, state.pendingSteps - state.request.direction, keys.length),
+  };
+  return state.releasePending ? confirmSession(selecting, sessionId) : selecting;
+}

@@ -1,26 +1,34 @@
-# 基础架构
+# 架构与当前边界
 
-QML 负责 Qt 对象、界面和信号；TypeScript 负责普通数据与纯逻辑；Lua 预留快捷键接入。
-业务 TypeScript 仅使用 ES2016 标准类型，构建脚本使用独立 Node 类型环境。
+QML 负责 Qt 对象、界面、输入和信号；TypeScript 负责普通数据与纯逻辑；Lua 负责全局绑定。
+业务 TypeScript 使用 ES2016，构建脚本使用独立 Node 类型环境。构建采用暂存目录，成功后
+替换 `dist/plugin/`；Qt 测试导入同一份发布 ESM。
 
-`src/logic/index.ts` 是 QML 调用入口。构建生成 `generated/Logic.mjs`，并将 QML、
-ESM、Lua 和翻译组装到 `dist/plugin/`；根目录中的 `generated/` 仅供开发和编辑器使用。
-Qt Quick Test 导入发布目录中的同一份 ESM，验证真实 Qt 运行环境。
+`HyprlandAdapter` 从 Quickshell 模型读取窗口、工作区和显示器，归一化到逻辑坐标，并读取
+Omarchy 显示器编号段。窗口 key 结合地址和 QObject 生命周期，关闭/地址复用不继承旧身份。
+TypeScript 的 unknown 校验边界排除无效窗口地址和断开显示器对象。
 
-`qmllint` 以零警告阈值检查插件 QML。它无法推断 esbuild 的 ESM 导出列表，以及
-Omarchy 以 `QtObject` 暴露的嵌套主题字段；这些边界采用局部的 `missing-property`
-注释，主题访问集中在 `components/Theme.qml`。ESM 函数调用由 Qt 测试验证，
-其余 QML 检查继续启用；主题与覆盖层仍需在实际宿主中验收。
+候选快照在一次会话中冻结。单屏窗口范围为当前普通工作区，多屏为来源显示器的普通工作区。
+工作区队列统一排序，填充合法空槽位；不预先创建工作区，新建入口独立于队列。
+`SessionLogic` 实现 preparing/selecting/committing 转换及会话序号校验，快照前步进和确认可累计。
 
-显示文本复用 `components/PlainText.qml`，Qt 渲染测试验证类似 HTML 的窗口标题
-仍以原始文字展示，防止 Qt 将动态标题当作富文本。
+面板开启时抑制真实历史更新；关闭后释放独占输入，激活控制器重查目标、发送 Lua dispatch，
+并在有限重试后记录最终真实焦点。快速回切使用独立 MRU，过滤已关闭/非法目标。
+激活仍在核对时到达的新打开请求在完成后处理。
 
-当前已提供共享记录/协议类型、配置校验、循环索引、MRU 数据操作、会话准备/取消和
-逻辑坐标换算。它们是后续实现的基础函数，不代表完整窗口/工作区切换功能。
+命令测试使用面板 Tab 和 Enter；绑定模式使用 GlobalShortcut 作为唯一 Tab 来源。
+修饰键仅在按住确认的会话中异步查询 `hl.is_key_down()`，支持左右 Alt/Super。
+查询失败不按超时提交。Lua 回调通过内存中的运行状态租约降级，不执行文件 IO 或阻塞进程。
+租约两秒更新一次，六秒过期；这是运行状态检测，与空闲修饰键轮询分别处理。
 
-`HyprlandAdapter`、`ActivationController`、`PreviewProvider` 明确报告能力尚不可用。
-`Overlay` 可作为宿主中的开发预览入口，界面和主题行为还需在实际 shell 中验收。
-尚无全局按键注册、截图、目标激活或后台轮询。
+主题与翻译复用 Omarchy Commons。动态文本复用 `PlainText`。QML 工具对 ESM 导出和主题
+QtObject 字段的推断边界使用局部注释，ESM 调用由 Qt 测试覆盖。本机 Quickshell 的
+GlobalShortcut 元数据缺少 PostReloadHook 基类，检查工具在 `.cache/` 中补入安装版本的
+原始声明，并以该目录优先进行 lint；不更改系统文件或运行时组件。
 
-P0 优先验证输入时序与捕获能力，再补齐 selecting/committing 转换、窗口记录校验、
-真实历史、焦点交接和缓存。基础版采用纯 shell 插件，当前无需创建 `native/`。
+本地部署使用独立 Python 安装器，备份配置和旧插件，修改本插件条目和带标记的 include，
+失败回滚；卸载保留其他条目、用户新增绑定，并可恢复安装前同 ID 插件。
+
+尚未实现 ScreencopyView 捕获、图像 LRU 和性能统计。窗口卡片使用图标/标题，工作区用
+几何矩形合成布局。双屏、混合 DPI、旋转、全屏、XWayland、模态/分组、锁屏中断和真实
+键盘释放时序需要桌面验收；纯逻辑测试不代表这些场景已通过。

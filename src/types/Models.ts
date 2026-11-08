@@ -61,4 +61,14 @@ export interface SwitchboardConfig {
   readonly showWorkspaceLabels: boolean;
   readonly showMonitorLabels: boolean;
   readonly debug: boolean;
+  readonly bindingsEnabled: boolean;
+}
+
+export interface DesktopSnapshot {
+  readonly windows: readonly WindowRecord[];
+  readonly workspaces: readonly WorkspaceRecord[];
+  readonly monitors: readonly MonitorRecord[];
+  readonly currentWindowKey: WindowKey | null;
+  readonly currentWorkspaceKey: WorkspaceKey | null;
+  readonly sourceMonitorKey: MonitorKey | null;
 }

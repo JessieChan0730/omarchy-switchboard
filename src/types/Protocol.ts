@@ -6,6 +6,8 @@ export type Direction = 1 | -1;
 export interface OpenRequest {
   readonly mode: SwitcherMode;
   readonly direction: Direction;
+  readonly holdToConfirm?: boolean;
+  readonly globalInput?: boolean;
 }
 
 export interface SessionContext {

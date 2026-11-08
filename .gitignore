@@ -4,3 +4,4 @@ dist/
 .cache/
 .stage-*/
 *.tsbuildinfo
+__pycache__/
