@@ -63,6 +63,7 @@ Item {
                 + (switcher.showMonitorLabels && switcher.snapshot.monitors.length > 1 ? " · " + modelData.monitorKey : "")
             selected: index === switcher.selectedIndex
             previewProvider: switcher.previewProvider
+            backgroundPath: switcher.previewProvider.backgroundPath || ""
             previewEnabled: switcher.visible && y + height > grid.contentY && y < grid.contentY + grid.height
             windows: switcher.snapshot.windows.filter(function(w) { return w.workspaceKey === modelData.key })
             viewport: {

@@ -18,54 +18,84 @@ TestCase {
         compare(keys(Logic.windowCandidates(desktop(false), ["window:5", "window:1"])), ["window:3"])
         compare(keys(Logic.windowCandidates(desktop(true), ["window:5", "window:1"])), ["window:3", "window:5", "window:1"])
     }
-    function test_workspacePriorityOnlyIncludesOccupied() {
+    function test_workspacePriorityIncludesBarSlots() {
         const queue = Logic.workspaceCandidates(desktop(false), ["workspace:3", "workspace:1", "workspace:5"])
-        compare(keys(queue), ["workspace:3", "workspace:1", "workspace:5"])
+        compare(keys(queue), ["workspace:3", "workspace:1", "workspace:5", "workspace:2", "workspace:4"])
+        compare(queue.find(function(w) { return w.id === 2 }).canCreate, true)
+        compare(queue.find(function(w) { return w.id === 4 }).exists, false)
         compare(queue.filter(function(w) { return w.id > 10 }).length, 0)
         compare(desktop(false).workspaces.length, 3)
     }
-    function test_existingEmptyWorkspaceIsHidden() {
+    function test_existingEmptyWorkspaceIsSelectable() {
         const snap = desktop(false)
         snap.workspaces.push({key: "workspace:2", id: 2, name: "2", monitorKey: "left", localSlot: 2, windowKeys: [], exists: true, isSpecial: false})
         const queue = Logic.workspaceCandidates(snap, ["workspace:3", "workspace:2", "workspace:1"])
-        compare(keys(queue), ["workspace:3", "workspace:1", "workspace:5"])
+        compare(keys(queue), ["workspace:3", "workspace:2", "workspace:1", "workspace:4", "workspace:5"])
+        compare(queue.find(function(w) { return w.id === 2 }).exists, true)
+        compare(queue.filter(function(w) { return w.id === 2 }).length, 1)
         compare(snap.workspaces.length, 4)
+    }
+    function test_barAddsOnlyExistingExtraSlots_data() {
+        return [{tag: "six", extra: 6}, {tag: "gap-seven", extra: 7}, {tag: "gap-ten", extra: 10}]
+    }
+    function test_barAddsOnlyExistingExtraSlots(data) {
+        const snap = desktop(false)
+        const id = data.extra
+        snap.workspaces.push({key: "workspace:" + id, id: id, name: String(id), monitorKey: "left", localSlot: id, windowKeys: [], exists: true, isSpecial: false})
+        const before = JSON.stringify(snap)
+        const queue = Logic.workspaceCandidates(snap, [])
+        compare(queue.length, 6)
+        compare(queue.map(function(w) { return w.id }).sort(function(a, b) { return a - b }), [1, 2, 3, 4, 5, id])
+        compare(queue.find(function(w) { return w.id === id }).windowKeys.length, 0)
+        compare(JSON.stringify(snap), before)
     }
     function test_multiMonitorQueueIsUnified() {
         const snap = desktop(true)
         snap.workspaces.push({key: "workspace:12", id: 12, name: "12", monitorKey: "right", localSlot: 2, windowKeys: [], exists: true, isSpecial: false})
         const queue = Logic.workspaceCandidates(snap, ["workspace:3", "workspace:12", "workspace:11", "workspace:5", "workspace:1"])
-        compare(keys(queue), ["workspace:3", "workspace:11", "workspace:5", "workspace:1"])
+        compare(keys(queue), ["workspace:3", "workspace:12", "workspace:11", "workspace:5", "workspace:1", "workspace:2", "workspace:4", "workspace:13", "workspace:14", "workspace:15"])
     }
-    function test_emptyCurrentDoesNotDisplaceOccupiedWorkspaces() {
+    function test_guestWorkspaceKeepsActualMonitorAndIsNotDuplicated() {
+        const snap = desktop(true)
+        snap.workspaces.find(function(w) { return w.id === 1 }).monitorKey = "right"
+        snap.workspaces.push({key: "workspace:21", id: 21, name: "21", monitorKey: "left", localSlot: 1, windowKeys: [], exists: true, isSpecial: false})
+        const queue = Logic.workspaceCandidates(snap, [])
+        compare(queue.length, 11)
+        compare(queue.filter(function(w) { return w.id === 1 }).length, 1)
+        compare(queue.find(function(w) { return w.id === 1 }).monitorKey, "right")
+        compare(queue.find(function(w) { return w.id === 21 }).monitorKey, "left")
+    }
+    function test_emptyCurrentIsSelectionAnchor() {
         const snap = desktop(false)
         snap.currentWorkspaceKey = "workspace:5"
         snap.windows = snap.windows.filter(function(w) { return w.workspaceKey !== "workspace:5" })
         snap.workspaces.find(function(w) { return w.key === "workspace:5" }).windowKeys = []
         const queue = Logic.workspaceCandidates(snap, ["workspace:5", "workspace:1"])
-        compare(keys(queue), ["workspace:1", "workspace:3"])
-        compare(Logic.initialSelection(queue, snap.currentWorkspaceKey, 1), 0)
+        compare(keys(queue), ["workspace:5", "workspace:1", "workspace:2", "workspace:3", "workspace:4"])
+        compare(Logic.initialSelection(queue, snap.currentWorkspaceKey, 1), 1)
         compare(Logic.initialSelection(queue, snap.currentWorkspaceKey, -1), queue.length - 1)
     }
-    function test_allEmptyHasNoCandidatesOrSelection() {
+    function test_allEmptyStillHasSelectableBarSlots() {
         const snap = desktop(false)
         snap.windows = []
         snap.workspaces.forEach(function(w) { w.windowKeys = [] })
         const queue = Logic.workspaceCandidates(snap, [])
-        compare(queue.length, 0)
-        compare(Logic.initialSelection(queue, "workspace:3", 1), -1)
-        compare(Logic.initialSelection(queue, "workspace:3", -1), -1)
+        compare(keys(queue), ["workspace:3", "workspace:1", "workspace:2", "workspace:4", "workspace:5"])
+        compare(Logic.initialSelection(queue, "workspace:3", 1), 1)
+        compare(Logic.initialSelection(queue, "workspace:3", -1), 4)
+        const state = Logic.resolveSession(Logic.prepareSession(1, {mode: "workspace", direction: 1}, {}), 1, keys(queue), "workspace:3", false)
+        compare(Logic.confirmSession(state, 1).targetKey, "workspace:1")
     }
-    function test_singleOccupiedWorkspaceCyclesToItself() {
+    function test_singleOccupiedWorkspaceCyclesThroughEmptySlots() {
         const snap = desktop(false)
         snap.windows = snap.windows.filter(function(w) { return w.workspaceKey === "workspace:3" })
         snap.workspaces.forEach(function(w) { if (w.key !== "workspace:3") w.windowKeys = [] })
         const queue = Logic.workspaceCandidates(snap, ["workspace:1", "workspace:5"])
-        compare(keys(queue), ["workspace:3"])
-        compare(Logic.initialSelection(queue, "workspace:3", 1), 0)
-        compare(Logic.initialSelection(queue, "workspace:3", -1), 0)
-        compare(Logic.wrapIndex(0, 1, queue.length), 0)
-        compare(Logic.wrapIndex(0, -1, queue.length), 0)
+        compare(keys(queue), ["workspace:3", "workspace:1", "workspace:5", "workspace:2", "workspace:4"])
+        compare(Logic.initialSelection(queue, "workspace:3", 1), 1)
+        compare(Logic.initialSelection(queue, "workspace:3", -1), 4)
+        compare(Logic.wrapIndex(queue.length - 1, 1, queue.length), 0)
+        compare(Logic.wrapIndex(0, -1, queue.length), queue.length - 1)
     }
     function test_newWorkspaceEntryStaysOutOfCycle() {
         const snap = desktop(true)
@@ -74,6 +104,9 @@ TestCase {
         compare(create.exists, false)
         const queue = Logic.workspaceCandidates(snap, [])
         verify(!keys(queue).includes("create"))
+        verify(keys(queue).includes("workspace:12"))
+        verify(!keys(queue).includes("workspace:10"))
+        verify(!keys(queue).includes("workspace:16"))
         compare(Logic.wrapIndex(queue.length - 1, 1, queue.length), 0)
     }
     function test_fullMonitorCannotCreateInNextBlock() {
@@ -117,7 +150,8 @@ TestCase {
         verify(!clean.windows.some(function(w) { return w.key === "bad" }))
         const queue = Logic.workspaceCandidates(clean, [])
         verify(!queue.some(function(w) { return w.key === "special" }))
-        verify(queue.some(function(w) { return w.key === "named" }))
+        // The top bar exposes numbered workspaces, not named/special ones.
+        verify(!queue.some(function(w) { return w.key === "named" }))
     }
     function test_twoObjectToggleAndClosedHistory() {
         let history = Logic.recordFocus(["a", "b", "c"], "b")

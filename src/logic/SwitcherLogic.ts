@@ -41,7 +41,10 @@ export function fillWorkspaceSlots(snapshot: DesktopSnapshot, slots: number): re
 }
 
 export function workspaceCandidates(snapshot: DesktopSnapshot, history: readonly string[]): readonly WorkspaceRecord[] {
-  const scope = snapshot.workspaces.filter((w) => !w.isSpecial && w.windowKeys.length > 0
+  // Omarchy's bar always shows the first five slots of each monitor, then
+  // any other numbered workspaces that exist, including visiting workspaces.
+  // Fill only those permanent entries; opening the overview must not create them.
+  const scope = fillWorkspaceSlots(snapshot, 5).filter((w) => w.id !== null && w.id > 0
     && (snapshot.monitors.length > 1 || w.monitorKey === snapshot.sourceMonitorKey));
   const previous = history.find((key) => key !== snapshot.currentWorkspaceKey && scope.some((w) => w.key === key));
   const rank = (w: WorkspaceRecord): number => {

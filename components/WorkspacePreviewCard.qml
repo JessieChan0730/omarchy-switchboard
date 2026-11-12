@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import qs.Ui as Ui
 import "../generated/Logic.mjs" as Logic
 
 Rectangle {
@@ -10,6 +11,7 @@ Rectangle {
     required property var previewProvider
     property bool selected: false
     property bool previewEnabled: false
+    property string backgroundPath: ""
     property var windows: []
     property var windowKeys: []
     property var viewport: ({x: 0, y: 0, width: 1, height: 1})
@@ -37,6 +39,18 @@ Rectangle {
             radius: Math.max(0, theme.cornerRadius - 4)
             color: theme.foregroundColor
             opacity: 0.04
+        }
+
+        Loader {
+            anchors.fill: parent
+            active: card.previewEnabled && card.backgroundPath !== ""
+            sourceComponent: Ui.BackgroundMedia {
+                objectName: "workspaceBackground"
+                path: card.backgroundPath
+                cached: true
+                constrainDecode: true
+                decodeSize: Qt.size(Math.ceil(preview.width), Math.ceil(preview.height))
+            }
         }
 
         Repeater {

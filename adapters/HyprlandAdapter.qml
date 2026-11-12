@@ -92,15 +92,17 @@ Item {
             const scale = m.scale > 0 ? m.scale : 1
             const transform = Number(ipc.transform || 0)
             const rotated = transform % 2 === 1
+            // Match the bar's fallback until Omarchy writes the monitor map.
+            const activeId = m.activeWorkspace ? m.activeWorkspace.id : 1
+            const block = adapter.blocks[m.name] === undefined ? Math.max(0, Math.floor((activeId - 1) / 10)) : adapter.blocks[m.name]
             return { key: m.name, connector: m.name, physicalIdentity: adapter.identities[m.name] || null,
-                slotStart: adapter.blocks[m.name] === undefined ? null : adapter.blocks[m.name] * 10 + 1,
+                slotStart: block * 10 + 1,
                 geometry: { x: m.x, y: m.y, width: (rotated ? m.height : m.width) / scale, height: (rotated ? m.width : m.height) / scale },
                 scale: scale, transform: transform }
         }).sort(function(a, b) { return (a.slotStart || 100000) - (b.slotStart || 100000) || a.connector.localeCompare(b.connector) })
         const workspaces = Hyprland.workspaces.values.map(function(w) {
             const monitor = w.monitor ? w.monitor.name : ""
-            const block = adapter.blocks[monitor]
-            const local = block !== undefined && w.id > block * 10 && w.id <= block * 10 + slots ? w.id - block * 10 : null
+            const local = w.id > 0 ? (w.id - 1) % 10 + 1 : null
             const origin = adapter.merged[String(w.id)]
             let home = monitor
             if (origin) Object.keys(adapter.identities).forEach(function(name) { if (adapter.identities[name] === origin) home = name })

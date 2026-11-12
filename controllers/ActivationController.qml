@@ -23,7 +23,7 @@ Item {
         } else {
             // Reconstruct legal slots; stale or vanished named/guest targets are rejected.
             // qmllint disable missing-property
-            workspace = Logic.fillWorkspaceSlots(snap, slotsPerMonitor).find(function(w) { return w.key === pendingTarget.key })
+            workspace = Logic.fillWorkspaceSlots(snap, Math.max(5, slotsPerMonitor)).find(function(w) { return w.key === pendingTarget.key })
             // qmllint enable missing-property
             if (!workspace || (!workspace.exists && !workspace.canCreate)) return false
         }
