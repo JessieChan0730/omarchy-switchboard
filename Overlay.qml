@@ -8,6 +8,7 @@ import qs.Ui as Ui
 import "controllers" as Controllers
 import "adapters" as Adapters
 import "components" as Components
+import "previews" as Previews
 import "generated/Logic.mjs" as Logic
 
 Item {
@@ -23,7 +24,6 @@ Item {
     property var pendingOpenRequest: null
     property string sourceMonitor: ""
     property string currentKey: ""
-    property string previousKey: ""
     property string errorKey: ""
     readonly property string pluginId: manifest ? manifest.id : "jessie.switchboard"
     readonly property string leaseToken: String(Date.now()) + "-" + String(Math.random())
@@ -44,7 +44,6 @@ Item {
         errorKey = config.supported && desktopAdapter.available ? "" : "status.unavailable"
         currentKey = mode === "window" ? snapshot.currentWindowKey || "" : snapshot.currentWorkspaceKey || ""
         const history = mode === "window" ? desktopAdapter.windowHistory : desktopAdapter.workspaceHistory
-        previousKey = history.find(function(k) { return k !== currentKey }) || ""
         // qmllint disable missing-property
         candidates = errorKey ? [] : mode === "window" ? Logic.windowCandidates(snapshot, history) : Logic.workspaceCandidates(snapshot, history)
         // qmllint enable missing-property
@@ -132,11 +131,15 @@ Item {
 
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
     Components.Theme { id: theme }
+    Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.opened && root.mode === "workspace" }
     Controllers.ConfigController { id: config; shell: root.shell; pluginId: root.pluginId; onInvalidConfig: root.dismiss() }
     Adapters.HyprlandAdapter {
         id: desktopAdapter
         onDesktopChanged: {
-            if (root.opened && !desktopAdapter.snapshot(config.settings.slotsPerMonitor).monitors.some(function(m) { return m.key === root.sourceMonitor })) root.dismiss()
+            if (!root.opened) return
+            const next = desktopAdapter.snapshot(config.settings.slotsPerMonitor)
+            if (!next.monitors.some(function(m) { return m.key === root.sourceMonitor })) root.dismiss()
+            else root.snapshot = next
         }
     }
     Controllers.SessionController { id: session; onCommitRequested: function(key) { root.commit(key) }; onEmptyConfirmed: root.dismiss() }
@@ -161,6 +164,18 @@ Item {
         }
     }
     Timer { id: modifierTimer; interval: 45; repeat: true; running: root.opened && root.request.holdToConfirm; onTriggered: root.queryModifiers() }
+    Timer {
+        interval: 200
+        repeat: true
+        running: root.opened && root.mode === "workspace"
+        onTriggered: {
+            // Pixel content streams through ScreencopyView; refresh geometry
+            // separately for resizing and moving windows while the panel is open.
+            Hyprland.refreshToplevels()
+            const next = desktopAdapter.snapshot(config.settings.slotsPerMonitor)
+            if (JSON.stringify(next) !== JSON.stringify(root.snapshot)) root.snapshot = next
+        }
+    }
     Process {
         id: modifierProc
         property int gestureId: -1
@@ -200,7 +215,7 @@ Item {
         shownKeyboardFocus: root.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         Rectangle {
             anchors.centerIn: parent
-            width: Math.min(parent.width - 48, 1000)
+            width: Math.min(parent.width - 48, root.mode === "workspace" ? workspaceView.preferredWidth + 40 : 1000)
             height: Math.min(parent.height - 64, root.mode === "workspace" ? workspaceView.implicitHeight + 40 : 570)
             radius: theme.cornerRadius
             color: theme.backgroundColor
@@ -248,8 +263,7 @@ Item {
                     candidates: root.mode === "workspace" ? root.candidates : []
                     snapshot: root.snapshot
                     selectedIndex: session.selectedIndex
-                    currentKey: root.currentKey
-                    previousKey: root.previousKey
+                    previewProvider: previews
                     showMonitorLabels: config.settings.showMonitorLabels
                     emptyText: strings.t(root.errorKey || "workspace.none")
                     foregroundColor: theme.foregroundColor

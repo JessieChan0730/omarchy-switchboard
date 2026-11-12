@@ -57,4 +57,24 @@ TestCase {
             { width: 100, height: 100 }
         ), null)
     }
+
+    function test_workspaceGrid_data() {
+        return [
+            {tag: "empty", count: 0, rows: 1, columns: 1},
+            {tag: "single", count: 1, rows: 1, columns: 1},
+            {tag: "two", count: 2, rows: 1, columns: 2},
+            {tag: "four", count: 4, rows: 2, columns: 2},
+            {tag: "five", count: 5, rows: 2, columns: 3},
+            {tag: "six", count: 6, rows: 2, columns: 3},
+            {tag: "eight", count: 8, rows: 2, columns: 4},
+            {tag: "nine", count: 9, rows: 3, columns: 3},
+            {tag: "ten", count: 10, rows: 3, columns: 4}
+        ]
+    }
+    function test_workspaceGrid(data): void {
+        const grid = Logic.workspaceGrid(data.count)
+        compare(grid.rows, data.rows)
+        compare(grid.columns, data.columns)
+        verify(grid.rows * grid.columns >= data.count)
+    }
 }

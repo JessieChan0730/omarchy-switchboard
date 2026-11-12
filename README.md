@@ -1,16 +1,22 @@
 # Omarchy Switchboard
 
 为 Omarchy 提供窗口切换面板与工作区概览，采用 **QML + TypeScript + Lua**。
-完整交互目标见 [计划书](计划书.md)。开发插件 ID 为 `jessie.switchboard`。
+最初的交互目标与后续规划见 [计划书](计划书.md)。开发插件 ID 为 `jessie.switchboard`。
 
 当前开发版已接入真实 Hyprland 数据、窗口候选过滤、MRU、工作区网格与排序、
 窗口/工作区确认激活，以及两对象快速回切。工作区概览只显示有窗口的工作区，
-隐藏空工作区，不显示顶部标题、底部新建入口和按键提示，面板高度随卡片行数调整。
+隐藏空工作区，使用放大的实时预览卡片，按数量排成网格：2 个为 1 行 2 列，
+4 个为 2 行 2 列，6 个为 2 行 3 列，8 个为 2 行 4 列；更多工作区增加行数。
+卡片只在左上角显示编号或名称，多显示器时可附带显示器名称，去掉“工作区”、
+窗口数量和当前/上一个文字。面板不显示顶部标题、底部新建入口和按键提示，
+宽高随网格调整并限制在屏幕内。
 面板支持 Tab/Shift+Tab、
 方向键、Enter、Esc 和鼠标点击，并跟随 Omarchy 的颜色、字体、圆角和中英文设置。
 
-窗口卡片目前显示应用图标和标题，工作区卡片显示窗口几何布局占位。
-**真实截图缩略图、预览缓存和性能预算尚未实现。** 多显示器逻辑已有自动测试，
+窗口卡片目前显示应用图标和标题。工作区卡片通过 `ScreencopyView` 实时捕获窗口内容，
+按真实窗口位置合成预览；捕获暂不可用时显示应用图标或名称。
+只捕获面板中可见的卡片，关闭面板后停止捕获并销毁预览组件，不保留截图缓存。
+**图像 LRU 与 GPU/内存性能预算尚未实现。** 多显示器逻辑已有自动测试，
 双屏实机、全屏/XWayland、左右修饰键与极快点按仍需按 [桌面验收说明](tests/integration/README.md) 测试。
 
 ## 开发
@@ -136,7 +142,8 @@ omarchy-shell jessie.switchboard settings '{"showMonitorLabels":false}'
 `showWorkspaceLabels`、`showMonitorLabels` 和 `slotsPerMonitor`（1–10）。编号起点来自 Omarchy
 的显示器映射；缺少映射时使用真实工作区名称，不猜测编号段。跨显示器候选使用真实全局 ID，
 界面显示显示器和本地槽位。`bindingsEnabled` 由安装脚本管理，应结合 include 一起调整。
-缓存相关字段保留为后续捕获实现的配置，当前没有图像缓存。
+`previewMode` 和缓存相关字段保留为后续配置，当前工作区使用实时预览，不读取这些字段，
+也没有图像缓存。
 
 窗口与工作区历史独立维护；预览高亮和取消不改变历史。工作区 Tab 循环和方向键仅选择
 概览中有窗口的卡片；全部为空时显示空状态，确认后关闭面板。工作区快速回切仍可返回
@@ -149,7 +156,8 @@ omarchy-shell jessie.switchboard settings '{"showMonitorLabels":false}'
 Overlay.qml                   宿主入口、面板交互与全局快捷键
 controllers/                  会话、配置、真实激活协调
 adapters/                     Hyprland 数据与真实历史
-components/                   窗口卡片、工作区布局与主题
+components/                   窗口卡片、工作区实时预览、网格与主题
+previews/                     按窗口生命周期解析可捕获的 Wayland 句柄
 src/logic/                    候选、排序、状态机、校验和坐标换算
 bindings.lua                  带运行状态降级的 Lua 绑定
 scripts/install.sh            本地构建、检查和安装

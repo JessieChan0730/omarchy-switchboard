@@ -1,13 +1,15 @@
 import QtQuick
 
 QtObject {
-    property int generation: 0
-    readonly property bool available: false
+    required property var adapter
+    property bool active: false
+    readonly property bool available: active && adapter.available
 
-    function stop(): void {
-        generation += 1
+    function sourceForWindow(key: string): var {
+        if (!available) return null
+        // Resolve the complete lifetime key; a reused address must never show
+        // the contents of a different window.
+        const handle = adapter.windowHandle(key)
+        return handle ? handle.wayland : null
     }
-
-    // P0: add ScreencopyView capture and stale-callback rejection.
-    // P3: implement measured LRU budgets; no screenshot buffers exist yet.
 }
