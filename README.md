@@ -2,9 +2,11 @@
 
 为 Omarchy 提供窗口切换面板与工作区概览，采用 **QML + TypeScript + Lua**。
 最初的交互目标与后续规划见 [计划书](计划书.md)。开发插件 ID 为 `jessie.switchboard`。
+插件以轻量为目标，全局快捷键范围仅包含 `Win+Tab`、`Win+Shift+Tab`、`Alt+Tab` 和
+`Alt+Shift+Tab`。Win 在 Hyprland 配置中称为 Super。
 
 当前开发版已接入真实 Hyprland 数据、窗口候选过滤、MRU、工作区网格与排序、
-窗口/工作区确认激活，以及两对象快速回切。工作区概览与 Omarchy 顶部工作区栏一致：
+窗口/工作区确认激活。工作区概览与 Omarchy 顶部工作区栏一致：
 每台显示器始终包含前 5 个编号槽位，再加入已存在的其他编号工作区和来访工作区，
 空工作区也可切换，预览显示当前桌面壁纸。使用放大的实时预览卡片，按数量排成网格：2 个为 1 行 2 列，
 4 个为 2 行 2 列，6 个为 2 行 3 列，8 个为 2 行 4 列；更多工作区增加行数。
@@ -73,7 +75,7 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"workspace","direction":-
 打开后使用 Tab/Shift+Tab 或方向键选择，Enter 或鼠标点击确认，Esc 取消。
 命令行打开默认使用 Enter 确认，不要求按住修饰键。初次打开仍按方向移动一次选中项。
 
-启用计划中的快捷键：
+启用快捷键的安装方式：
 
 ```bash
 ./scripts/install.sh --bindings
@@ -81,14 +83,16 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"workspace","direction":-
 
 | 快捷键 | 行为 |
 | --- | --- |
-| `Alt+Tab` / `Alt+Shift+Tab` | 窗口正向/反向选择，松开 Alt 确认 |
-| `Super+Tab` / `Super+Shift+Tab` | 工作区正向/反向选择，松开 Super 确认 |
-| `Alt+grave` | 最近两个普通窗口之间回切 |
-| `Super+grave` | 最近两个普通工作区之间回切 |
+| `Win+Tab` | 工作区正向选择，松开 Win 确认 |
+| `Win+Shift+Tab` | 工作区反向选择，松开 Win 确认 |
+| `Alt+Tab` | 窗口正向选择，松开 Alt 确认 |
+| `Alt+Shift+Tab` | 窗口反向选择，松开 Alt 确认 |
 
-`grave` 是 Esc 下方的反引号键，无需额外按 Shift。启用绑定会替换原来的 Alt 窗口循环、
-Super 工作区循环，以及 **Super+grave 的 Quake console 入口**；`Super+Shift+grave`
-和 `Super+Ctrl+Tab` 保持原绑定。自定义键盘布局可调整仓库 `bindings.lua`，重新安装后测试。
+接管范围为上述四个 Tab 组合，分别替换原来的窗口和工作区循环。精简后的绑定应保留
+Omarchy 的 Quake console 入口及其他系统快捷键。自定义键盘布局可调整仓库 `bindings.lua`，重新安装后测试。
+
+实现同步状态：本次已收敛文档与规划，当前 `bindings.lua` 和 `Overlay.qml` 仍保留旧版
+两对象回切绑定及 `previous` IPC；代码精简尚待完成，现有安装包的 `--bindings` 仍会接管这些旧入口。
 
 修饰键确认目前在面板打开期间异步调用本机 `hl.is_key_down()`，同时检查左右 Alt 或左右 Super。
 持续按住不会因固定超时确认；查询失败时保留面板，可用 Enter 或 Esc。
@@ -117,7 +121,7 @@ Super 工作区循环，以及 **Super+grave 的 Quake console 入口**；`Super
 脚本会报告错误，不覆盖无法解析的配置。
 
 开启快捷键接管时，插件每两秒更新一次运行状态租约。停用或异常退出后，租约清除或在六秒内过期，
-Lua 绑定退回直接切换；`Super+grave` 退回 Quake console。面板关闭后停止修饰键查询。
+Lua 的 Tab 绑定退回直接切换。面板关闭后停止修饰键查询。
 可用 `omarchy plugin disable jessie.switchboard` 停用插件；要立即恢复原始绑定，使用 `--no-bindings` 或卸载脚本。
 
 ### 诊断与配置
@@ -131,25 +135,21 @@ omarchy-shell jessie.switchboard step -1
 omarchy-shell jessie.switchboard confirm
 omarchy-shell jessie.switchboard cancel
 
-# 测试两对象回切
-omarchy-shell jessie.switchboard previous window
-omarchy-shell jessie.switchboard previous workspace
-
 # 更新本插件设置，合并保留其他字段
 omarchy-shell jessie.switchboard settings '{"showMonitorLabels":false}'
 ```
 
 设置存放于用户 `shell.json` 的 `plugins[]` 中本插件对象，支持 `configVersion: 1`、
-`showWorkspaceLabels`、`showMonitorLabels` 和 `slotsPerMonitor`（1–10，约束历史回切及新建槽位，
-概览数量独立跟随顶部栏）。编号起点来自 Omarchy 的显示器映射；缺少映射时，与顶部栏一样
+`showWorkspaceLabels`、`showMonitorLabels`。现有 `slotsPerMonitor` 字段（1–10）用于旧版槽位逻辑，
+概览数量独立跟随顶部栏。编号起点来自 Omarchy 的显示器映射；缺少映射时，与顶部栏一样
 从显示器当前工作区推导编号段。跨显示器候选使用真实全局 ID，
 界面显示显示器和本地槽位。`bindingsEnabled` 由安装脚本管理，应结合 include 一起调整。
 `previewMode` 和缓存相关字段保留为后续配置，当前工作区使用实时预览，不读取这些字段，
 也没有图像缓存。
 
-窗口与工作区历史独立维护；预览高亮和取消不改变历史。工作区 Tab 循环和方向键仅选择
+窗口与工作区分别维护用于候选排序的 MRU 历史；预览高亮和取消不改变历史。工作区 Tab 循环和方向键选择
 概览中的全部卡片，包括空工作区；全部为空时仍可选择前 5 个槽位。打开或取消面板不创建工作区，
-确认尚不存在的槽位时才创建并切换。工作区快速回切可返回历史中可合法创建的空编号槽位。
+确认尚不存在的槽位时才创建并切换。
 目标确认前会重新验证身份和显示器，覆盖层释放输入后再激活，最多进行三次焦点核对。
 
 ### 项目结构

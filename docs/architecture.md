@@ -1,5 +1,9 @@
 # 架构与当前边界
 
+插件以轻量为目标，全局输入范围固定为 `Win+Tab`、`Win+Shift+Tab`、`Alt+Tab` 和
+`Alt+Shift+Tab`，分别进入工作区与窗口面板。Win 对应 Hyprland 的 Super 修饰键。
+MRU 历史服务于候选排序，确认激活统一通过面板会话完成。
+
 QML 负责 Qt 对象、界面、输入和信号；TypeScript 负责普通数据与纯逻辑；Lua 负责全局绑定。
 业务 TypeScript 使用 ES2016，构建脚本使用独立 Node 类型环境。构建采用暂存目录，成功后
 替换 `dist/plugin/`；Qt 测试导入同一份发布 ESM。
@@ -19,17 +23,21 @@ TypeScript 的 unknown 校验边界排除无效窗口地址和断开显示器对
 排除末行下方间距，全部可见时关闭滚动交互并保持 `contentY: 0`。
 卡片只在右上角显示小号、半透明的编号/名称，选中时添加 1 像素主题色边框，背景颜色保持一致。多屏可附显示器名称，
 没有底部标签、窗口数量和当前/上一个文字，也没有顶部标题或底部操作提示。
-历史回切仍按 `slotsPerMonitor` 补齐合法目标，确认校验至少覆盖顶部栏的前 5 个槽位。
+空槽位确认校验至少覆盖顶部栏的前 5 个槽位。
 `SessionLogic` 实现 preparing/selecting/committing 转换及会话序号校验，快照前步进和确认可累计。
 
 面板开启时抑制真实历史更新；关闭后释放独占输入，激活控制器重查目标、发送 Lua dispatch，
-并在有限重试后记录最终真实焦点。快速回切使用独立 MRU，过滤已关闭/非法目标。
+并在有限重试后记录最终真实焦点。窗口与工作区 MRU 独立维护，仅用于各自的候选排序。
 激活仍在核对时到达的新打开请求在完成后处理。
 
 命令测试使用面板 Tab 和 Enter；绑定模式使用 GlobalShortcut 作为唯一 Tab 来源。
 修饰键仅在按住确认的会话中异步查询 `hl.is_key_down()`，支持左右 Alt/Super。
 查询失败不按超时提交。Lua 回调通过内存中的运行状态租约降级，不执行文件 IO 或阻塞进程。
 租约两秒更新一次，六秒过期；这是运行状态检测，与空闲修饰键轮询分别处理。
+
+待同步的代码精简：从 `bindings.lua`、`Overlay.qml` 中移除旧版两对象回切绑定、
+对应的 GlobalShortcut 和 `previous` IPC，清理仅为回切服务的逻辑与测试；保留候选排序
+使用的焦点记录与去重。完成后安装器只接管上述四个 Tab 组合，Quake console 保持系统原绑定。
 
 主题与翻译复用 Omarchy Commons。动态文本复用 `PlainText`。QML 工具对 ESM 导出和主题
 QtObject 字段的推断边界使用局部注释，ESM 调用由 Qt 测试覆盖。本机 Quickshell 的
