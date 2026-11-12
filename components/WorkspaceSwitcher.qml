@@ -25,15 +25,32 @@ Item {
     }
     implicitHeight: candidates.length > 0 ? rows * grid.cellHeight - spacing : 120
     signal candidateClicked(int index)
-    onSelectedIndexChanged: { if (selectedIndex >= 0) grid.positionViewAtIndex(selectedIndex, GridView.Contain) }
-    onCandidatesChanged: Qt.callLater(function() { grid.contentY = 0; if (switcher.selectedIndex >= 0) grid.positionViewAtIndex(switcher.selectedIndex, GridView.Contain) })
-    onHeightChanged: Qt.callLater(function() { if (switcher.selectedIndex >= 0) grid.positionViewAtIndex(switcher.selectedIndex, GridView.Contain) })
-    onWidthChanged: Qt.callLater(function() { if (switcher.selectedIndex >= 0) grid.positionViewAtIndex(switcher.selectedIndex, GridView.Contain) })
+
+    function revealSelection(): void {
+        if (selectedIndex < 0 || selectedIndex >= candidates.length || grid.height <= 0) return
+        grid.cancelFlick()
+        // GridView.Contain includes the trailing cell gap. Use the card's
+        // actual bounds so selecting the last visible row never scrolls it.
+        const maxOffset = Math.max(0, implicitHeight - grid.height)
+        if (maxOffset <= 1) { grid.contentY = 0; return }
+        const top = Math.floor(selectedIndex / columns) * grid.cellHeight
+        const bottom = top + grid.cellHeight - spacing
+        let offset = Math.max(0, Math.min(maxOffset, grid.contentY))
+        if (top < offset - 1) offset = top
+        else if (bottom > offset + grid.height + 1) offset = bottom - grid.height
+        grid.contentY = Math.max(0, Math.min(maxOffset, offset))
+    }
+    onSelectedIndexChanged: Qt.callLater(revealSelection)
+    onCandidatesChanged: Qt.callLater(function() { grid.contentY = 0; switcher.revealSelection() })
+    onHeightChanged: Qt.callLater(revealSelection)
+    onWidthChanged: Qt.callLater(revealSelection)
     GridView {
         id: grid
         anchors { fill: parent; rightMargin: -switcher.spacing }
         clip: true
         cacheBuffer: 0
+        interactive: switcher.implicitHeight > height + 1
+        boundsBehavior: Flickable.StopAtBounds
         cellWidth: width / switcher.columns
         cellHeight: Math.max(100, (cellWidth - switcher.spacing) / switcher.previewAspectRatio) + switcher.spacing
         model: switcher.candidates

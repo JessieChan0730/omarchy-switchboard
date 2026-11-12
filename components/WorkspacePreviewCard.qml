@@ -106,21 +106,21 @@ Rectangle {
     }
 
     Rectangle {
-        anchors { top: parent.top; left: parent.left; margins: 14 }
-        width: Math.min(card.width - 28, badge.implicitWidth + 20)
-        height: badge.implicitHeight + 10
-        radius: Math.min(theme.cornerRadius, 8)
-        color: theme.backgroundColor
-        border.width: 1
-        border.color: card.selected ? theme.accentColor : theme.borderColor
+        anchors { top: parent.top; right: parent.right; margins: 12 }
+        width: Math.min(card.width - 24, badge.implicitWidth + 12)
+        height: badge.implicitHeight + 6
+        radius: Math.min(theme.cornerRadius, 6)
+        color: Qt.rgba(theme.backgroundColor.r, theme.backgroundColor.g, theme.backgroundColor.b, 0.55)
+        border.width: card.selected ? 1 : 0
+        border.color: theme.accentColor
 
         PlainText {
             id: badge
-            anchors { fill: parent; leftMargin: 10; rightMargin: 10; topMargin: 5; bottomMargin: 5 }
+            anchors { fill: parent; leftMargin: 6; rightMargin: 6; topMargin: 3; bottomMargin: 3 }
             text: card.label
             color: card.selected ? theme.accentColor : theme.foregroundColor
             font.family: theme.fontFamily
-            font.pixelSize: theme.bodySize
+            font.pixelSize: Math.max(11, theme.bodySize - 1)
             font.bold: card.selected
             elide: Text.ElideRight
         }
