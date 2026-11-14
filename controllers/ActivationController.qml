@@ -19,7 +19,10 @@ Item {
         if (pendingTarget.kind === "window") {
             window = snap.windows.find(function(w) { return w.key === pendingTarget.key })
             if (!window) return false
+            if (pendingTarget.monitorKey && (window.monitorKey !== pendingTarget.monitorKey
+                || window.workspaceKey !== pendingTarget.workspaceKey)) return false
             workspace = snap.workspaces.find(function(w) { return w.key === window.workspaceKey })
+            if (!workspace) return false
         } else {
             // Reconstruct legal slots; stale or vanished named/guest targets are rejected.
             // qmllint disable missing-property

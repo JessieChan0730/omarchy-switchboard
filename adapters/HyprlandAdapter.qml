@@ -116,7 +116,10 @@ Item {
             const ipc = w.lastIpcObject || {}, at = ipc.at || [0, 0], size = ipc.size || [0, 0]
             let address = String(w.address)
             if (address.indexOf("0x") !== 0) address = "0x" + address
-            return { key: adapter.windowKey(w), address: address, title: w.title || "", appId: ipc.class || (w.wayland ? w.wayland.appId : ""),
+            const appId = ipc.class || (w.wayland ? w.wayland.appId : "")
+            const entry = appId ? DesktopEntries.heuristicLookup(appId) : null
+            return { key: adapter.windowKey(w), address: address, title: w.title || "", appId: appId,
+                applicationId: entry ? entry.id : appId,
                 workspaceKey: adapter.workspaceKey(w.workspace), monitorKey: w.monitor ? w.monitor.name : "",
                 geometry: { x: at[0], y: at[1], width: size[0], height: size[1] }, floating: ipc.floating === true,
                 fullscreen: Number(ipc.fullscreen || 0) > 0, pinned: ipc.pinned === true,

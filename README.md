@@ -2,8 +2,8 @@
 
 为 Omarchy 提供窗口切换面板与工作区概览，采用 **QML + TypeScript + Lua**。
 最初的交互目标与后续规划见 [计划书](计划书.md)。开发插件 ID 为 `jessie.switchboard`。
-插件以轻量为目标，全局快捷键范围仅包含 `Win+Tab`、`Win+Shift+Tab`、`Alt+Tab` 和
-`Alt+Shift+Tab`。Win 在 Hyprland 配置中称为 Super。
+插件以轻量为目标：`Win+Tab` 切工作区，`Alt+Tab` 切应用，`Alt+反引号` 切同应用窗口，
+各入口支持 Shift 反向选择。Win 在 Hyprland 配置中称为 Super。
 
 当前开发版已接入真实 Hyprland 数据、窗口候选过滤、MRU、工作区网格与排序、
 窗口/工作区确认激活。工作区概览与 Omarchy 顶部工作区栏一致：
@@ -23,7 +23,14 @@ Win+Tab 只列出打开面板时聚焦显示器的工作区，包含该显示器
 面板支持 Tab/Shift+Tab、
 方向键、Enter、Esc 和鼠标点击，并跟随 Omarchy 的颜色、字体、圆角和中英文设置。
 
-窗口卡片目前显示应用图标和标题，超过 12 个窗口时固定四列并可滚动。工作区卡片通过 `ScreencopyView` 实时捕获窗口内容，
+Alt+Tab 在屏幕中央显示一行应用图标，范围固定为打开时的当前工作区，按最近使用顺序排列。
+同一应用只显示一个图标，多个窗口显示数量角标；松开 Alt 进入该应用最近使用的窗口。
+应用身份优先使用桌面入口 ID，找不到入口时使用 app ID；身份未知的窗口单独显示。
+Alt+反引号在选中应用下面展开窗口气泡，逐项显示 `ScreencopyView` 实时预览。
+列表未打开时从当前聚焦应用进入，首次选择它的下一个窗口；已打开时操作高亮应用。
+气泡打开后按 Tab 收起气泡并继续切应用；Shift 反向，Esc 取消并恢复原窗口焦点，松开 Alt 确认。
+应用图标与窗口预览始终各为一行，超出宽度后横向滚动并自动显示选中项。
+工作区卡片通过 `ScreencopyView` 实时捕获窗口内容，
 按真实窗口位置合成预览；捕获暂不可用时显示应用图标或名称。
 只捕获面板中可见的卡片，关闭面板后停止捕获并销毁窗口捕获组件，不保留窗口截图缓存。
 桌面壁纸提前生成最长边不超过 960 像素的小图并预加载，关闭面板后保留，避免大壁纸在打开时延迟出现。
@@ -72,8 +79,11 @@ QML 工具元数据的兼容处理仅写入仓库 `.cache/`，不改动系统源
 部署使用独立的 `runtime/<构建 ID>/` 路径，安装器核对新实例的构建 ID，避免宿主 QML 缓存继续运行旧代码。
 
 ```bash
-# 窗口面板：单屏只列出当前普通工作区窗口
+# 应用图标：只列出当前普通工作区应用
 omarchy-shell shell summon jessie.switchboard '{"mode":"window"}'
+
+# 当前聚焦应用的窗口气泡
+omarchy-shell shell summon jessie.switchboard '{"mode":"app-windows"}'
 
 # 工作区网格：与顶部栏一致，包含空工作区
 omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
@@ -95,16 +105,16 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"workspace","direction":-
 | --- | --- |
 | `Win+Tab` | 工作区正向选择，松开 Win 确认 |
 | `Win+Shift+Tab` | 工作区反向选择，松开 Win 确认 |
-| `Alt+Tab` | 窗口正向选择，松开 Alt 确认 |
-| `Alt+Shift+Tab` | 窗口反向选择，松开 Alt 确认 |
+| `Alt+Tab` | 应用正向选择，松开 Alt 确认 |
+| `Alt+Shift+Tab` | 应用反向选择，松开 Alt 确认 |
+| `Alt+反引号` | 同应用窗口正向选择，松开 Alt 确认 |
+| `Alt+Shift+反引号` | 同应用窗口反向选择，松开 Alt 确认 |
 
-接管范围为上述四个 Tab 组合，分别替换原来的窗口和工作区循环。
-`Win+反引号` 保留系统或用户配置的 Quake console 入口，`Alt+反引号`、
-`Win+Shift+反引号` 和 `Win+Ctrl+Tab` 保留原有绑定。自定义键盘布局可调整仓库
-`bindings.lua`，重新安装后测试。
-
-旧版两对象回切绑定、全局入口和 `previous` IPC 已移除。更新安装时重载 Hyprland，
-恢复系统及用户配置中的反引号绑定；Tab 面板仍使用最近真实焦点历史排序。
+接管上述六个组合。反引号指键盘上的 ` / ~ 键，Shift 只改变循环方向。
+`Win+反引号` 和 `Win+Shift+反引号` 保留 Quake console 的系统或用户入口；
+`Win+Ctrl+Tab` 保留原有绑定。自定义键盘布局可调整仓库 `bindings.lua` 后重新安装。
+`window-forward` / `window-backward` 全局入口及 `mode: "window"` 保留兼容名称，候选已改为应用分组。
+插件未就绪时，Tab 组合沿用窗口/工作区直接循环降级；新增反引号组合等待插件恢复。
 
 面板打开时，按住 Win/Alt 也可用方向键按网格行列选择；左右不跨行，上下保持同列，
 遇到边缘或末行空位时保持原选择。Tab / Shift+Tab 按候选顺序循环，Enter 确认、Esc 取消。
@@ -146,8 +156,9 @@ Lua 的 Tab 绑定退回直接切换。面板关闭后停止修饰键查询。
 # 查看是否就绪、候选数量、选中索引、会话阶段及绑定模式，不输出标题或图像
 omarchy-shell jessie.switchboard status
 
-# 面板中的步进、确认和取消
+# 切应用、展开/循环同应用窗口、确认和取消
 omarchy-shell jessie.switchboard step -1
+omarchy-shell jessie.switchboard expand 1
 omarchy-shell jessie.switchboard confirm
 omarchy-shell jessie.switchboard cancel
 
@@ -168,7 +179,9 @@ Omarchy 默认为每台显示器分配 10 个本地槽位；插拔显示器或�
 `previewMode` 和缓存相关字段保留为后续配置，当前工作区使用实时预览，不读取这些字段。
 壁纸使用固定预算的小图缓存，窗口内容没有图像缓存。
 
-窗口与工作区分别维护用于候选排序的 MRU 历史；预览高亮和取消不改变历史。工作区 Tab 循环和方向键选择
+窗口与工作区分别维护用于候选排序的 MRU 历史；应用分组按组内最近窗口排序，预览高亮和取消不改变历史。
+应用列表和窗口气泡同步窗口的加入、关闭及移出；已有应用顺序与所选窗口身份保持，选中目标离开时取消。
+窗口确认前核对打开时的工作区与显示器，拒绝跟随移走的窗口切到其他工作区。工作区 Tab 循环和方向键选择
 概览中的全部卡片，包括空工作区；全部为空时仍可选择前 5 个槽位。打开或取消面板不创建工作区，
 确认尚不存在的槽位时才创建并切换。
 面板打开期间同步数字工作区的加入、离开和重新编号；已有候选保持相对顺序，新项追加到

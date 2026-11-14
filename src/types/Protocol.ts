@@ -1,6 +1,6 @@
 import type { MonitorKey, WindowKey, WorkspaceKey } from "./Models";
 
-export type SwitcherMode = "window" | "workspace";
+export type SwitcherMode = "window" | "app-windows" | "workspace";
 export type Direction = 1 | -1;
 
 export interface OpenRequest {

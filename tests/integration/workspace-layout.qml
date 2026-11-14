@@ -69,15 +69,18 @@ ShellRoot {
     }
     Components.WindowSwitcher {
         id: windowSwitcher
-        width: 1600
-        height: 570
+        width: 640
+        height: preferredHeight
         emptyText: "Empty"
         foregroundColor: "white"
-        showMonitorLabels: false
+        previewProvider: provider
+        windowsExpanded: true
         candidates: Array.from({length: 17}, function(_, index) {
-            return {key: "window:" + index, title: "Test " + index, appId: "", workspaceKey: "workspace:20", monitorKey: "monitor"}
+            return {key: "application:" + index, appId: "", windows: [{key: "window:" + index, title: "Test " + index}]}
         })
-        snapshot: ({monitors: [], workspaces: [{key: "workspace:20", localSlot: 10, name: "20"}]})
+        windowCandidates: Array.from({length: 8}, function(_, index) {
+            return {key: "window:" + index, title: "Test " + index, appId: ""}
+        })
     }
 
     function check(condition: bool, message: string): bool {
@@ -103,30 +106,42 @@ ShellRoot {
         running: true
         onTriggered: {
             if (test.testingWindows) {
-                const windowGrid = windowSwitcher.children[0] as GridView
+                const appList = windowSwitcher.children.find(function(child) { return child.children
+                    && child.children.some(function(item) { return item.objectName === "applicationList" }) }).children.find(function(item) { return item.objectName === "applicationList" }) as ListView
+                const windowList = windowSwitcher.children.find(function(child) { return child.children
+                    && child.children.some(function(item) { return item.objectName === "applicationWindowList" }) }).children.find(function(item) { return item.objectName === "applicationWindowList" }) as ListView
                 if (test.selecting) {
                     windowSwitcher.selectedIndex = test.returning ? 0 : windowSwitcher.candidates.length - 1
-                    windowGrid.forceLayout()
+                    windowSwitcher.selectedWindowIndex = test.returning ? 0 : windowSwitcher.windowCandidates.length - 1
+                    appList.forceLayout()
+                    windowList.forceLayout()
                     test.selecting = false
                     return
                 }
-                if (!test.check(windowSwitcher.columns === 4, "large window grid has four columns")) return
-                const card = windowGrid.itemAtIndex(windowSwitcher.selectedIndex)
-                if (!test.check(!!card && card.y >= windowGrid.contentY - 1
-                    && card.y + card.height <= windowGrid.contentY + windowGrid.height + 1, "selected window is fully visible")) return
-                if (!test.checkIndicator(windowSwitcher, true, test.returning ? 0 : 1)) return
+                const app = appList.itemAtIndex(windowSwitcher.selectedIndex)
+                const card = windowList.itemAtIndex(windowSwitcher.selectedWindowIndex)
+                if (!test.check(appList.orientation === ListView.Horizontal && appList.interactive,
+                    "applications stay in a single scrolling row")) return
+                if (!test.check(!!app && app.x >= appList.contentX - 1 && app.x + app.width <= appList.contentX + appList.width + 1,
+                    "selected app is fully visible")) return
+                if (!test.check(!!card && card.x >= windowList.contentX - 1 && card.x + card.width <= windowList.contentX + windowList.width + 1,
+                    "selected window preview is fully visible")) return
+                if (!test.check(app.y === 0 && card.y === 0, "neither row wraps")) return
                 if (!test.returning) {
-                    if (!test.check(windowGrid.interactive && windowGrid.contentY > 0, "large window grid scrolls to last row")) return
+                    if (!test.check(windowSwitcher.applicationContentX > 0 && windowSwitcher.windowContentX > 0, "both rows reveal their final selection")) return
                     test.returning = true
                     test.selecting = true
                     return
                 }
-                if (!test.check(Math.abs(windowGrid.contentY) < 0.01, "window grid returns to first row")) return
-                if (!test.check(card.subtitle === Commons.I18n.formatNumber(0), "window subtitle uses slot zero")) return
-                console.log("PASS: large window grid keeps four columns, reveals selection and uses slot zero")
+                if (!test.check(Math.abs(windowSwitcher.applicationContentX) < 0.01 && Math.abs(windowSwitcher.windowContentX) < 0.01,
+                    "both rows return to origin")) return
+                windowSwitcher.windowsExpanded = false
+                if (!test.check(windowSwitcher.preferredHeight === windowSwitcher.stripHeight, "collapsing returns to icon-only height")) return
+                console.log("PASS: app and window rows scroll horizontally and reveal selected items")
                 Qt.quit()
                 return
             }
+
             const grid = switcher.children[0] as GridView
             if (test.selecting) {
                 switcher.selectedIndex = test.cursor

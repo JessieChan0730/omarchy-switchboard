@@ -19,6 +19,7 @@ export interface WindowRecord {
   readonly address: string;
   readonly title: string;
   readonly appId: string;
+  readonly applicationId: string;
   readonly workspaceKey: WorkspaceKey;
   readonly monitorKey: MonitorKey;
   readonly geometry: Geometry;
@@ -26,6 +27,12 @@ export interface WindowRecord {
   readonly fullscreen: boolean;
   readonly pinned: boolean;
   readonly focusHistoryID: number | null;
+}
+
+export interface ApplicationRecord {
+  readonly key: string;
+  readonly appId: string;
+  readonly windows: readonly WindowRecord[];
 }
 
 export interface WorkspaceRecord {

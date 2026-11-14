@@ -13,9 +13,8 @@ export function wrapIndex(index: number, delta: number, count: number): number {
 }
 
 export function windowCandidates(snapshot: DesktopSnapshot, history: readonly string[]): readonly WindowRecord[] {
-  const windows = snapshot.windows.filter((w) => snapshot.monitors.length > 1
-    ? w.monitorKey === snapshot.sourceMonitorKey
-    : w.workspaceKey === snapshot.currentWorkspaceKey || (w.pinned && w.monitorKey === snapshot.sourceMonitorKey));
+  const windows = snapshot.windows.filter((w) => w.monitorKey === snapshot.sourceMonitorKey
+    && w.workspaceKey === snapshot.currentWorkspaceKey);
   const rank = (w: WindowRecord): number => {
     if (w.key === snapshot.currentWindowKey) return -1;
     const i = history.indexOf(w.key);

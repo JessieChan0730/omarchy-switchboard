@@ -7,7 +7,7 @@ HARNESS = ROOT / "tests/fixtures/bindings_harness.lua"
 
 
 class BindingTests(unittest.TestCase):
-    def test_four_tab_bindings_preserve_other_keys_and_fallback(self):
+    def test_six_bindings_preserve_other_keys_and_fallback(self):
         subprocess.run(["lua", str(HARNESS), str(ROOT / "dist/plugin/bindings.lua"), "plugin"], check=True)
 
     def test_unavailable_api_keeps_original_bindings(self):

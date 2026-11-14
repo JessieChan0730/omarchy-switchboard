@@ -16,7 +16,7 @@ TestCase {
 
     function test_windowScopeAndMru() {
         compare(keys(Logic.windowCandidates(desktop(false), ["window:5", "window:1"])), ["window:3"])
-        compare(keys(Logic.windowCandidates(desktop(true), ["window:5", "window:1"])), ["window:3", "window:5", "window:1"])
+        compare(keys(Logic.windowCandidates(desktop(true), ["window:5", "window:1"])), ["window:3"])
     }
     function test_workspacePriorityIncludesBarSlots() {
         const queue = Logic.workspaceCandidates(desktop(false), ["workspace:3", "workspace:1", "workspace:5"])
@@ -192,6 +192,7 @@ TestCase {
     }
     function test_tabCandidatesSkipClosedHistoryAndKeepPreviousFirst() {
         const snap = desktop(true)
+        snap.windows.forEach(function(window) { if (window.monitorKey === "left") window.workspaceKey = "workspace:3" })
         const history = Logic.recordFocus(["window:closed", "window:1", "window:5"], "window:3")
         compare(keys(Logic.windowCandidates(snap, history)), ["window:3", "window:1", "window:5"])
         snap.windows = snap.windows.filter(function(window) { return window.key !== "window:1" })

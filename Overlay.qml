@@ -23,6 +23,12 @@ Item {
     property var pendingActivation: null
     property var pendingOpenRequest: null
     property string sourceMonitor: ""
+    property string sourceWorkspace: ""
+    property string originWindowKey: ""
+    property bool windowsExpanded: false
+    property bool applicationOnly: false
+    readonly property var selectedApplication: mode === "window" ? candidates[session.selectedIndex] || null : null
+    readonly property var applicationWindows: selectedApplication ? selectedApplication.windows : []
     property string currentKey: ""
     property string errorKey: ""
     readonly property string pluginId: manifest ? manifest.id : "jessie.switchboard"
@@ -34,23 +40,42 @@ Item {
         // qmllint disable missing-property
         const next = Logic.parseOpenRequest(payloadJson)
         // qmllint enable missing-property
-        if (opened && mode === next.mode) { request = next; step(next.direction); return }
+        const nextMode = next.mode === "app-windows" ? "window" : next.mode
+        if (opened && mode === nextMode) {
+            request = next
+            if (next.mode === "app-windows") expandWindows(next.direction)
+            else step(next.direction)
+            return
+        }
         if (opened) close()
         desktopAdapter.recordCurrentFocus()
         snapshot = desktopAdapter.snapshot(config.settings.slotsPerMonitor)
         sourceMonitor = snapshot.sourceMonitorKey || ""
+        sourceWorkspace = snapshot.currentWorkspaceKey || ""
+        originWindowKey = snapshot.currentWindowKey || ""
         request = next
-        mode = next.mode
+        mode = nextMode
+        windowsExpanded = false
+        applicationOnly = next.mode === "app-windows"
         errorKey = config.supported && desktopAdapter.available ? "" : "status.unavailable"
-        currentKey = mode === "window" ? snapshot.currentWindowKey || "" : snapshot.currentWorkspaceKey || ""
+        const currentWindow = snapshot.windows.find(function(w) { return w.key === snapshot.currentWindowKey })
+        // qmllint disable missing-property
+        currentKey = mode === "window" ? currentWindow ? Logic.applicationKey(currentWindow) : "" : snapshot.currentWorkspaceKey || ""
+        // qmllint enable missing-property
         const history = mode === "window" ? desktopAdapter.windowHistory : desktopAdapter.workspaceHistory
         // qmllint disable missing-property
-        candidates = errorKey ? [] : mode === "window" ? Logic.windowCandidates(snapshot, history) : Logic.workspaceCandidates(snapshot, history)
+        candidates = errorKey ? [] : mode === "window" ? Logic.applicationCandidates(snapshot, history) : Logic.workspaceCandidates(snapshot, history)
         // qmllint enable missing-property
         desktopAdapter.suppressHistory = true
         session.begin(next, {sourceMonitorKey: sourceMonitor, originWindowKey: snapshot.currentWindowKey, originWorkspaceKey: snapshot.currentWorkspaceKey})
         opened = true
         session.ready(candidates.map(function(c) { return c.key }), currentKey, false)
+        if (applicationOnly) {
+            const index = candidates.findIndex(function(c) { return c.key === root.currentKey })
+            if (index < 0) { dismiss(); return }
+            session.select(index)
+            expandWindows(next.direction)
+        }
         Qt.callLater(function() {
             if (!root.opened) return
             keyCatcher.forceActiveFocus()
@@ -61,6 +86,9 @@ Item {
         opened = false
         modifierTimer.stop()
         session.cancel()
+        windowSession.cancel()
+        windowsExpanded = false
+        applicationOnly = false
         candidates = []
         pendingOpenRequest = null
         if (!pendingActivation && !activation.busy) desktopAdapter.suppressHistory = false
@@ -69,7 +97,8 @@ Item {
         if (!opened) return
         if (!next.monitors.some(function(m) { return m.key === root.sourceMonitor })) { dismiss(); return }
         // Keep the opening screen as the source even if desktop focus changes.
-        const scoped = Object.assign({}, next, {sourceMonitorKey: sourceMonitor})
+        const scoped = Object.assign({}, next, {sourceMonitorKey: sourceMonitor,
+            currentWorkspaceKey: mode === "window" ? sourceWorkspace : next.currentWorkspaceKey})
         if (JSON.stringify(scoped) !== JSON.stringify(snapshot)) snapshot = scoped
         if (mode === "workspace" && !errorKey) {
             // Reconcile arrivals, departures and renumbering against the locked
@@ -82,27 +111,72 @@ Item {
                 candidates = fresh
                 session.refresh(fresh.map(function(c) { return c.key }))
             }
+        } else if (mode === "window" && !errorKey) {
+            // History and both navigation queues stay stable while the surface owns input.
+            // qmllint disable missing-property
+            const fresh = Logic.reconcileApplicationCandidates(Object.assign({}, scoped, {currentWindowKey: session.state.context.originWindowKey}),
+                desktopAdapter.windowHistory, candidates.map(function(c) { return c.key }))
+            // qmllint enable missing-property
+            if (JSON.stringify(fresh) !== JSON.stringify(candidates)) {
+                candidates = fresh
+                session.refresh(fresh.map(function(c) { return c.key }))
+                if (opened && windowsExpanded) windowSession.refresh(applicationWindows.map(function(w) { return w.key }))
+            }
         }
     }
     function dismiss(): void {
+        // Unmapping an exclusive layer can otherwise focus a different floating
+        // window under the pointer. Restore the opening window after unmapping.
+        if (opened && mode === "window" && !pendingActivation && !activation.busy) {
+            const origin = snapshot.windows.find(function(w) { return w.key === root.originWindowKey
+                && w.workspaceKey === root.sourceWorkspace && w.monitorKey === root.sourceMonitor })
+            if (origin) {
+                pendingActivation = {kind: "window", key: origin.key, monitorKey: sourceMonitor, workspaceKey: sourceWorkspace}
+                activateTimer.restart()
+            }
+        }
         close()
         if (shell && typeof shell.hide === "function") shell.hide(pluginId)
     }
     function step(direction: int): void {
         if (!opened) return
+        windowsExpanded = false
+        applicationOnly = false
+        windowSession.cancel()
         session.step(direction)
     }
+    function expandWindows(direction: int): void {
+        if (!opened || mode !== "window" || !selectedApplication) return
+        if (windowsExpanded) { windowSession.step(direction); return }
+        windowsExpanded = true
+        windowSession.begin({mode: "app-windows", direction: direction}, session.state.context)
+        windowSession.ready(applicationWindows.map(function(w) { return w.key }), session.state.context.originWindowKey, false)
+    }
     function select(index: int): void {
+        windowsExpanded = false
         session.select(index)
         session.confirm()
     }
+    function selectWindow(index: int): void {
+        windowSession.select(index)
+        windowSession.confirm()
+    }
     function confirm(): void {
-        session.confirm()
+        if (windowsExpanded) windowSession.confirm()
+        else session.confirm()
     }
     function commit(key: string): void {
         const candidate = candidates.find(function(c) { return c.key === key })
         if (!candidate) { dismiss(); return }
-        queueActivation({kind: mode, key: key, workspace: mode === "workspace" ? candidate : null})
+        // The application session is already committing here, so its selecting
+        // index is gone. Resolve through the committed group, not the view.
+        if (mode === "window") queueActivation({kind: "window", key: candidate.windows[0].key,
+            monitorKey: sourceMonitor, workspaceKey: sourceWorkspace})
+        else queueActivation({kind: "workspace", key: key, workspace: candidate})
+    }
+    function commitWindow(key: string): void {
+        if (!applicationWindows.some(function(w) { return w.key === key })) { dismiss(); return }
+        queueActivation({kind: "window", key: key, monitorKey: sourceMonitor, workspaceKey: sourceWorkspace})
     }
     function queueActivation(target: var): void {
         pendingActivation = target
@@ -111,7 +185,17 @@ Item {
         activateTimer.restart()
     }
     function navigate(key: int): void {
-        const columns = mode === "workspace" ? workspaceView.columns : windowView.columns
+        if (mode === "window") {
+            if (key === Qt.Key_Down && !windowsExpanded) expandWindows(1)
+            else if (key === Qt.Key_Up && windowsExpanded) { windowsExpanded = false; windowSession.cancel() }
+            else if (key === Qt.Key_Left || key === Qt.Key_Right) {
+                const delta = key === Qt.Key_Left ? -1 : 1
+                if (windowsExpanded) windowSession.step(delta)
+                else session.step(delta)
+            }
+            return
+        }
+        const columns = workspaceView.columns
         const direction = key === Qt.Key_Left ? "left" : key === Qt.Key_Right ? "right" : key === Qt.Key_Up ? "up" : "down"
         // qmllint disable missing-property
         session.select(Logic.navigateGrid(session.selectedIndex, candidates.length, columns, direction))
@@ -138,7 +222,7 @@ Item {
 
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
     Components.Theme { id: theme }
-    Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.opened && root.mode === "workspace" }
+    Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.opened && (root.mode === "workspace" || root.windowsExpanded) }
     Controllers.ConfigController { id: config; shell: root.shell; pluginId: root.pluginId; onInvalidConfig: root.dismiss() }
     Adapters.HyprlandAdapter {
         id: desktopAdapter
@@ -147,6 +231,7 @@ Item {
         }
     }
     Controllers.SessionController { id: session; onCommitRequested: function(key) { root.commit(key) }; onEmptyConfirmed: root.dismiss() }
+    Controllers.SessionController { id: windowSession; onCommitRequested: function(key) { root.commitWindow(key) }; onEmptyConfirmed: root.dismiss() }
     Controllers.ActivationController {
         id: activation
         adapter: desktopAdapter
@@ -171,7 +256,7 @@ Item {
     Timer {
         interval: 200
         repeat: true
-        running: root.opened && root.mode === "workspace"
+        running: root.opened
         onTriggered: {
             // Pixel content streams through ScreencopyView; refresh geometry
             // separately for resizing and moving windows while the panel is open.
@@ -187,7 +272,7 @@ Item {
             onStreamFinished: {
                 if (!root.opened || modifierProc.gestureId !== session.state.sessionId) return
                 if (text.trim() === "false") {
-                    session.confirm()
+                    root.confirm()
                 }
                 // An unsupported query never commits by timeout. Enter and Esc remain available.
             }
@@ -198,13 +283,16 @@ Item {
 
     GlobalShortcut { appid: root.pluginId; name: "window-forward"; onPressed: root.open('{"mode":"window","direction":1,"holdToConfirm":true,"globalInput":true}') }
     GlobalShortcut { appid: root.pluginId; name: "window-backward"; onPressed: root.open('{"mode":"window","direction":-1,"holdToConfirm":true,"globalInput":true}') }
+    GlobalShortcut { appid: root.pluginId; name: "app-windows-forward"; onPressed: root.open('{"mode":"app-windows","direction":1,"holdToConfirm":true,"globalInput":true}') }
+    GlobalShortcut { appid: root.pluginId; name: "app-windows-backward"; onPressed: root.open('{"mode":"app-windows","direction":-1,"holdToConfirm":true,"globalInput":true}') }
     GlobalShortcut { appid: root.pluginId; name: "workspace-forward"; onPressed: root.open('{"mode":"workspace","direction":1,"holdToConfirm":true,"globalInput":true}') }
     GlobalShortcut { appid: root.pluginId; name: "workspace-backward"; onPressed: root.open('{"mode":"workspace","direction":-1,"holdToConfirm":true,"globalInput":true}') }
 
     Commons.ShellIpc {
         target: root.pluginId
-        function status(): string { return JSON.stringify({ready: desktopAdapter.available && config.supported, buildId: root.manifest ? root.manifest.developmentBuildId || "" : "", opened: root.opened, mode: root.mode, candidates: root.candidates.length, selectedIndex: session.selectedIndex, phase: session.phase, busy: activation.busy || root.pendingActivation !== null, bindings: root.bindingReady, sourceMonitor: root.sourceMonitor}) }
+        function status(): string { return JSON.stringify({ready: desktopAdapter.available && config.supported, buildId: root.manifest ? root.manifest.developmentBuildId || "" : "", opened: root.opened, mode: root.mode, candidates: root.candidates.length, selectedIndex: session.selectedIndex, phase: session.phase, busy: activation.busy || root.pendingActivation !== null, bindings: root.bindingReady, sourceMonitor: root.sourceMonitor, sourceWorkspace: root.sourceWorkspace, windowsExpanded: root.windowsExpanded, windows: root.applicationWindows.length, selectedWindowIndex: windowSession.selectedIndex}) }
         function step(direction: int): void { root.step(direction < 0 ? -1 : 1) }
+        function expand(direction: int): void { root.expandWindows(direction < 0 ? -1 : 1) }
         function confirm(): void { root.confirm() }
         function cancel(): void { root.dismiss() }
         function settings(json: string): bool { try { return config.save(JSON.parse(json)) } catch (error) { return false } }
@@ -222,16 +310,18 @@ Item {
             enabled: root.opened
         }
         Rectangle {
-            anchors.centerIn: parent
-            width: Math.min(parent.width - 48, root.mode === "workspace" ? workspaceView.preferredWidth + 40 : 1000)
-            height: Math.min(parent.height - 64, root.mode === "workspace" ? workspaceView.preferredHeight + 40 : 570)
+            x: (parent.width - width) / 2
+            y: root.mode === "workspace" ? (parent.height - height) / 2
+                : Math.min((parent.height - windowView.stripHeight) / 2, parent.height - height - 32)
+            width: Math.min(parent.width - 48, root.mode === "workspace" ? workspaceView.preferredWidth + 40 : windowView.preferredWidth)
+            height: Math.min(parent.height - 64, root.mode === "workspace" ? workspaceView.preferredHeight + 40 : windowView.preferredHeight)
             radius: theme.cornerRadius
-            color: theme.backgroundColor
+            color: root.mode === "workspace" ? theme.backgroundColor : "transparent"
             border.color: theme.borderColor
-            border.width: 1
+            border.width: root.mode === "workspace" ? 1 : 0
             Item {
                 id: keyCatcher
-                anchors { fill: parent; margins: 20 }
+                anchors { fill: parent; margins: root.mode === "workspace" ? 20 : 0 }
                 focus: true
                 Keys.onPressed: function(event) {
                     if (event.key === Qt.Key_Escape) root.dismiss()
@@ -240,31 +330,28 @@ Item {
                         // While inhibited, Tab reaches Qt instead of the global shortcut.
                         if (!root.request.globalInput || shortcutInhibitor.active)
                             root.step((event.modifiers & Qt.ShiftModifier) || event.key === Qt.Key_Backtab ? -1 : 1)
+                    } else if (root.mode === "window" && (event.key === Qt.Key_QuoteLeft || event.key === Qt.Key_AsciiTilde)) {
+                        if (!root.request.globalInput || shortcutInhibitor.active)
+                            root.expandWindows(event.modifiers & Qt.ShiftModifier ? -1 : 1)
                     } else if ([Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down].indexOf(event.key) >= 0) root.navigate(Commons.Util.readingKey(event))
                     else return
                     event.accepted = true
                 }
-                Components.PlainText {
-                    id: title
-                    visible: root.mode === "window"
-                    width: parent.width
-                    text: strings.t("window.title") + " · " + root.sourceMonitor
-                    color: theme.foregroundColor
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.titleSize
-                }
                 Components.WindowSwitcher {
                     id: windowView
-                    anchors { top: title.bottom; topMargin: 16; left: parent.left; right: parent.right; bottom: parent.bottom }
+                    anchors.fill: parent
                     visible: root.mode === "window"
                     candidates: root.mode === "window" ? root.candidates : []
-                    snapshot: root.snapshot
                     selectedIndex: session.selectedIndex
+                    windowCandidates: root.applicationWindows
+                    selectedWindowIndex: windowSession.selectedIndex
+                    windowsExpanded: root.windowsExpanded
+                    applicationOnly: root.applicationOnly
+                    previewProvider: previews
                     emptyText: strings.t(root.errorKey || "window.empty")
                     foregroundColor: theme.foregroundColor
-                    showWorkspaceLabels: config.settings.showWorkspaceLabels
-                    showMonitorLabels: config.settings.showMonitorLabels
                     onCandidateClicked: function(index) { root.select(index) }
+                    onWindowClicked: function(index) { root.selectWindow(index) }
                 }
                 Components.WorkspaceSwitcher {
                     id: workspaceView

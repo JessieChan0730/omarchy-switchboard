@@ -55,7 +55,7 @@ export function parseOpenRequest(payloadJson: unknown): OpenRequest {
   }
   const data = isRecord(value) ? value : {};
   return {
-    mode: data["mode"] === "workspace" ? "workspace" : "window",
+    mode: data["mode"] === "workspace" ? "workspace" : data["mode"] === "app-windows" ? "app-windows" : "window",
     direction: data["direction"] === -1 ? -1 : 1,
     holdToConfirm: data["holdToConfirm"] === true,
     globalInput: data["globalInput"] === true,
@@ -92,6 +92,7 @@ export function parseSnapshot(raw: unknown): DesktopSnapshot {
     && /^0x[0-9a-f]+$/i.test(text(w["address"])) && ordinaryKeys.includes(text(w["workspaceKey"]))
     && monitorKeys.includes(text(w["monitorKey"]))).map((w) => ({
     key: text(w["key"]), address: text(w["address"]), title: text(w["title"]), appId: text(w["appId"]),
+    applicationId: text(w["applicationId"]) || text(w["appId"]),
     workspaceKey: text(w["workspaceKey"]), monitorKey: text(w["monitorKey"]), geometry: geometry(w["geometry"]),
     floating: boolean(w["floating"], false), fullscreen: boolean(w["fullscreen"], false), pinned: boolean(w["pinned"], false),
     focusHistoryID: typeof w["focusHistoryID"] === "number" ? w["focusHistoryID"] : null,

@@ -26,8 +26,10 @@ local function next_window(forward)
   end
 end
 
-bind("ALT + TAB", "Switchboard: next window", "window-forward", next_window(true))
-bind("ALT + SHIFT + TAB", "Switchboard: previous window", "window-backward", next_window(false))
+bind("ALT + TAB", "Switchboard: next application", "window-forward", next_window(true))
+bind("ALT + SHIFT + TAB", "Switchboard: previous application", "window-backward", next_window(false))
+bind("ALT + grave", "Switchboard: next application window", "app-windows-forward")
+bind("ALT + SHIFT + grave", "Switchboard: previous application window", "app-windows-backward")
 bind("SUPER + TAB", "Switchboard: next workspace", "workspace-forward", function()
   hl.dispatch(hl.dsp.focus({ workspace = "m+1" }))
 end)
