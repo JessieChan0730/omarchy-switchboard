@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.Ui as Ui
+import "../controllers" as Controllers
 import "../generated/Logic.mjs" as Logic
 
 Rectangle {
@@ -63,13 +64,11 @@ Rectangle {
                 required property string modelData
                 readonly property var windowRecord: card.windows.find(function(window) { return window.key === miniature.modelData })
                 readonly property var captureSource: card.previewProvider.sourceForWindow(modelData)
-                property bool captureStopped: false
                 // qmllint disable missing-property
                 readonly property var rect: windowRecord ? Logic.fitGeometry(windowRecord.geometry, card.viewport, {width: preview.width, height: preview.height}) : null
                 // qmllint enable missing-property
                 readonly property ScreencopyView capture: captureLoader.item as ScreencopyView
                 readonly property bool hasPreview: capture !== null && capture.hasContent
-                onCaptureSourceChanged: captureStopped = false
 
                 x: rect ? rect.x : 0
                 y: rect ? rect.y : 0
@@ -79,17 +78,23 @@ Rectangle {
                 color: theme.backgroundColor
                 clip: true
 
+                Controllers.CaptureRetryController {
+                    id: captureRetry
+                    active: card.previewEnabled && miniature.rect !== null
+                    source: miniature.captureSource
+                    hasContent: miniature.hasPreview
+                }
                 Loader {
                     id: captureLoader
                     anchors.fill: parent
-                    active: card.previewEnabled && miniature.captureSource !== null && miniature.rect !== null && !miniature.captureStopped
+                    active: captureRetry.captureEnabled
                     sourceComponent: ScreencopyView {
                         anchors.centerIn: parent
                         captureSource: miniature.captureSource
                         live: true
                         paintCursor: false
                         constraintSize: Qt.size(miniature.width, miniature.height)
-                        onStopped: miniature.captureStopped = true
+                        onStopped: captureRetry.captureFailed()
                     }
                 }
 
