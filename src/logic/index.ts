@@ -1,4 +1,4 @@
-export { wrapIndex, windowCandidates, workspaceCandidates, fillWorkspaceSlots, initialSelection, newWorkspace } from "./SwitcherLogic";
+export { wrapIndex, windowCandidates, workspaceCandidates, workspaceActivationTarget, fillWorkspaceSlots, initialSelection, newWorkspace } from "./SwitcherLogic";
 export { recordFocus, previousObject } from "./HistoryLogic";
 export { createIdleSession, prepareSession, cancelSession, stepSession, selectSession, confirmSession, resolveSession } from "./SessionLogic";
 export { fitGeometry, workspaceGrid } from "./WorkspaceLayout";

@@ -45,7 +45,7 @@ export function workspaceCandidates(snapshot: DesktopSnapshot, history: readonly
   // any other numbered workspaces that exist, including visiting workspaces.
   // Fill only those permanent entries; opening the overview must not create them.
   const scope = fillWorkspaceSlots(snapshot, 5).filter((w) => w.id !== null && w.id > 0
-    && (snapshot.monitors.length > 1 || w.monitorKey === snapshot.sourceMonitorKey));
+    && w.monitorKey === snapshot.sourceMonitorKey);
   const previous = history.find((key) => key !== snapshot.currentWorkspaceKey && scope.some((w) => w.key === key));
   const rank = (w: WorkspaceRecord): number => {
     if (w.key === snapshot.currentWorkspaceKey) return -2;
@@ -57,6 +57,19 @@ export function workspaceCandidates(snapshot: DesktopSnapshot, history: readonly
     snapshot.monitors.findIndex((m) => m.key === a.monitorKey) - snapshot.monitors.findIndex((m) => m.key === b.monitorKey)
       || (a.localSlot ?? a.id ?? 100000) - (b.localSlot ?? b.id ?? 100000) || a.name.localeCompare(b.name);
   return scope.slice().sort((a, b) => rank(a) - rank(b) || stable(a, b));
+}
+
+/** Revalidate the global workspace ID without following it onto another screen. */
+export function workspaceActivationTarget(
+  snapshot: DesktopSnapshot,
+  key: string,
+  monitorKey: string,
+  slots: number,
+): WorkspaceRecord | null {
+  if (!snapshot.monitors.some((m) => m.key === monitorKey)) return null;
+  const workspace = fillWorkspaceSlots(snapshot, slots).find((w) => w.key === key);
+  return workspace && workspace.monitorKey === monitorKey && (workspace.exists || workspace.canCreate)
+    ? workspace : null;
 }
 
 export function initialSelection(candidates: readonly { readonly key: string }[], current: string | null, direction: number, occupiedFirst = false): number {

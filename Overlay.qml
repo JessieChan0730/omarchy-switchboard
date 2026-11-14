@@ -65,6 +65,13 @@ Item {
         pendingOpenRequest = null
         if (!pendingActivation && !activation.busy) desktopAdapter.suppressHistory = false
     }
+    function refreshDesktop(next: var): void {
+        if (!opened) return
+        if (!next.monitors.some(function(m) { return m.key === root.sourceMonitor })) { dismiss(); return }
+        // Keep the opening screen as the source even if desktop focus changes.
+        const scoped = Object.assign({}, next, {sourceMonitorKey: sourceMonitor})
+        if (JSON.stringify(scoped) !== JSON.stringify(snapshot)) snapshot = scoped
+    }
     function dismiss(): void {
         close()
         if (shell && typeof shell.hide === "function") shell.hide(pluginId)
@@ -136,10 +143,7 @@ Item {
     Adapters.HyprlandAdapter {
         id: desktopAdapter
         onDesktopChanged: {
-            if (!root.opened) return
-            const next = desktopAdapter.snapshot(config.settings.slotsPerMonitor)
-            if (!next.monitors.some(function(m) { return m.key === root.sourceMonitor })) root.dismiss()
-            else root.snapshot = next
+            if (root.opened) root.refreshDesktop(desktopAdapter.snapshot(config.settings.slotsPerMonitor))
         }
     }
     Controllers.SessionController { id: session; onCommitRequested: function(key) { root.commit(key) }; onEmptyConfirmed: root.dismiss() }
@@ -173,7 +177,7 @@ Item {
             // separately for resizing and moving windows while the panel is open.
             Hyprland.refreshToplevels()
             const next = desktopAdapter.snapshot(config.settings.slotsPerMonitor)
-            if (JSON.stringify(next) !== JSON.stringify(root.snapshot)) root.snapshot = next
+            root.refreshDesktop(next)
         }
     }
     Process {
