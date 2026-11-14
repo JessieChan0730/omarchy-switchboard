@@ -52,6 +52,26 @@ function testQt(): void {
   });
 }
 
+async function testWorkspaceLayout(): Promise<void> {
+  const shellRoot = process.env["OMARCHY_SHELL_DIR"] ?? "/usr/share/omarchy/shell";
+  const probeRoot = join(root, ".cache", "workspace-layout");
+  await mkdir(probeRoot, { recursive: true });
+  await cp(join(root, "tests", "integration", "workspace-layout.qml"), join(probeRoot, "shell.qml"));
+  await cp(dist, join(probeRoot, "plugin"), { recursive: true });
+  for (const module of ["Commons", "Ui"]) {
+    try {
+      await symlink(join(shellRoot, module), join(probeRoot, module), "dir");
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+    }
+  }
+  run("quickshell", ["--no-color", "--path", join(probeRoot, "shell.qml")], {
+    ...process.env,
+    QT_QPA_PLATFORM: "offscreen",
+    QSG_RHI_BACKEND: "software",
+  });
+}
+
 try {
   const mode = process.argv[2] ?? "all";
   if (!["types", "lint", "qt", "manifest", "all"].includes(mode)) {
@@ -61,7 +81,10 @@ try {
   else {
     await buildProject();
     if (mode === "all" || mode === "lint") await lintQml();
-    if (mode === "all" || mode === "qt") testQt();
+    if (mode === "all" || mode === "qt") {
+      testQt();
+      await testWorkspaceLayout();
+    }
     if (mode === "all" || mode === "manifest") run("omarchy", ["plugin", "validate", dist]);
     if (mode === "all") {
       run("luac", ["-p", "bindings.lua"]);

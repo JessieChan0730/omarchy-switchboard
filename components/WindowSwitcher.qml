@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import qs.Commons as Commons
 
 Item {
     id: switcher
@@ -34,7 +35,8 @@ Item {
             subtitle: {
                 const workspace = switcher.snapshot.workspaces.find(function(w) { return w.key === modelData.workspaceKey })
                 const labels = []
-                if (switcher.showWorkspaceLabels && workspace) labels.push(String(workspace.localSlot || workspace.name))
+                if (switcher.showWorkspaceLabels && workspace) labels.push(workspace.localSlot
+                    ? Commons.I18n.formatNumber(workspace.localSlot === 10 ? 0 : workspace.localSlot) : workspace.name)
                 if (switcher.showMonitorLabels) labels.push(modelData.monitorKey)
                 return labels.join(" · ")
             }

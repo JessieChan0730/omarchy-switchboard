@@ -259,6 +259,7 @@ Item {
                 Components.WorkspaceSwitcher {
                     id: workspaceView
                     anchors.fill: parent
+                    maximumHeight: Math.max(0, overlay.height - 64 - 40)
                     visible: root.mode === "workspace"
                     candidates: root.mode === "workspace" ? root.candidates : []
                     snapshot: root.snapshot
