@@ -9,6 +9,9 @@ Rectangle {
     id: card
     required property string label
     required property var previewProvider
+    property bool visiting: false
+    property string tooltipText: ""
+    readonly property string badgeText: (visiting ? "↳ " : "") + label
     property bool selected: false
     property bool previewEnabled: false
     property string backgroundPath: ""
@@ -121,7 +124,7 @@ Rectangle {
 
     Rectangle {
         anchors { top: parent.top; right: parent.right; margins: 12 }
-        width: Math.min(card.width - 24, badge.implicitWidth + 12)
+        width: Math.min(card.width - 24, badge.implicitWidth + 12 + (card.visiting ? marker.implicitWidth + 4 : 0))
         height: badge.implicitHeight + 6
         radius: Math.min(theme.cornerRadius, 6)
         color: Qt.rgba(theme.backgroundColor.r, theme.backgroundColor.g, theme.backgroundColor.b, 0.55)
@@ -129,8 +132,22 @@ Rectangle {
         border.color: theme.accentColor
 
         PlainText {
+            id: marker
+            anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
+            visible: card.visiting
+            text: "↳"
+            color: theme.foregroundColor
+            opacity: 0.65
+            font.family: theme.fontFamily
+            font.pixelSize: Math.max(11, theme.bodySize - 1)
+        }
+        PlainText {
             id: badge
-            anchors { fill: parent; leftMargin: 6; rightMargin: 6; topMargin: 3; bottomMargin: 3 }
+            anchors {
+                fill: parent
+                leftMargin: 6 + (card.visiting ? marker.implicitWidth + 4 : 0)
+                rightMargin: 6; topMargin: 3; bottomMargin: 3
+            }
             text: card.label
             color: card.selected ? theme.accentColor : theme.foregroundColor
             font.family: theme.fontFamily
@@ -139,5 +156,10 @@ Rectangle {
             elide: Text.ElideRight
         }
     }
-    MouseArea { anchors.fill: parent; onClicked: card.clicked() }
+    MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; onClicked: card.clicked() }
+    Ui.PanelToolTip {
+        objectName: "workspaceTooltip"
+        visible: card.visible && mouse.containsMouse && card.tooltipText !== ""
+        text: card.tooltipText
+    }
 }

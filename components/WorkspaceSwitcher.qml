@@ -20,6 +20,7 @@ Item {
     readonly property int columns: layout.columns
     readonly property int rows: layout.rows
     readonly property int visibleRows: Math.min(rows, 3)
+    Commons.Translations { id: strings; directory: Qt.resolvedUrl("../i18n") }
     readonly property real previewAspectRatio: {
         const monitor = snapshot.monitors.find(function(m) { return m.key === switcher.snapshot.sourceMonitorKey }) || snapshot.monitors[0]
         return monitor && monitor.geometry.width > 0 && monitor.geometry.height > 0 ? monitor.geometry.width / monitor.geometry.height : 16 / 9
@@ -67,10 +68,18 @@ Item {
         delegate: WorkspacePreviewCard {
             required property var modelData
             required property int index
+            // qmllint disable missing-property
+            readonly property var badgeInfo: Logic.workspaceBadge(modelData,
+                switcher.snapshot.monitors.find(function(m) { return m.key === modelData.monitorKey }))
+            // qmllint enable missing-property
             width: grid.cellWidth - switcher.spacing
             height: grid.cellHeight - switcher.spacing
-            label: (modelData.localSlot ? Commons.I18n.formatNumber(modelData.localSlot === 10 ? 0 : modelData.localSlot) : modelData.name)
+            label: (badgeInfo.number !== null ? Commons.I18n.formatNumber(badgeInfo.number) : modelData.name)
                 + (switcher.showMonitorLabels && switcher.snapshot.monitors.length > 1 ? " · " + modelData.monitorKey : "")
+            visiting: badgeInfo.visiting
+            tooltipText: visiting ? strings.t("workspace.visiting")
+                .arg(Commons.I18n.formatNumber(modelData.id))
+                .arg(Commons.I18n.formatNumber(modelData.localSlot === 10 ? 0 : modelData.localSlot)) : ""
             selected: index === switcher.selectedIndex
             previewProvider: switcher.previewProvider
             backgroundPath: switcher.previewProvider.backgroundPath || ""

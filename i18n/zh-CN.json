@@ -7,6 +7,7 @@
   "workspace.count": { "other": "%1 个窗口" },
   "workspace.current": "当前",
   "workspace.previous": "上一个",
+  "workspace.visiting": "额外工作区 %1 · 顶部栏角标 %2",
   "status.unavailable": "Hyprland 不可用或配置版本不兼容。",
   "status.activationFailed": "无法激活目标，目标可能已经关闭。"
 }

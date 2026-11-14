@@ -12,7 +12,10 @@ ShellRoot {
         {name: "eight", count: 8, width: 1600, height: 900, aspect: 16 / 9},
         {name: "nine-fractional-scale", count: 9, width: 1600, height: 900, aspect: 16 / 9},
         {name: "ten-second-monitor", count: 10, width: 1600, height: 900, aspect: 16 / 9, base: 10},
-        {name: "twelve-with-guests", count: 12, width: 1600, height: 900, aspect: 16 / 9, guestBase: 20},
+        {name: "twelve-with-guests", count: 12, width: 1600, height: 900, aspect: 16 / 9, base: 10, guestIds: [21, 30]},
+        {name: "guests-before-third-monitor-block", count: 12, width: 1600, height: 900, aspect: 16 / 9, base: 20, guestIds: [1, 10]},
+        {name: "guests-with-monitor-labels", count: 12, width: 1600, height: 900, aspect: 16 / 9, base: 10, guestIds: [21, 30], monitorLabels: true, secondMonitor: true},
+        {name: "guests-after-disconnect", count: 12, width: 1600, height: 900, aspect: 16 / 9, guestIds: [11, 20], monitorLabels: true},
         {name: "thirteen-four-columns", count: 13, width: 1600, height: 900, aspect: 16 / 9, scroll: true},
         {name: "sixteen-four-columns", count: 16, width: 1600, height: 900, aspect: 16 / 9, scroll: true},
         {name: "seventeen-four-columns", count: 17, width: 1600, height: 900, aspect: 16 / 9, scroll: true},
@@ -52,15 +55,15 @@ ShellRoot {
                 emptyText: "Empty"
                 foregroundColor: "white"
                 previewProvider: provider
-                showMonitorLabels: false
+                showMonitorLabels: test.scenario.monitorLabels === true
                 candidates: Array.from({length: test.scenario.count}, function(_, index) {
-                    const id = test.scenario.guestBase && index >= 10 ? test.scenario.guestBase + index - 9
+                    const id = test.scenario.guestIds && index >= 10 ? test.scenario.guestIds[index - 10]
                         : (test.scenario.base || 0) + index + 1
-                    return {key: "workspace:" + id, id: id, name: String(id), localSlot: index % 10 + 1, monitorKey: "monitor"}
+                    return {key: "workspace:" + id, id: id, name: String(id), localSlot: (id - 1) % 10 + 1, monitorKey: "monitor"}
                 })
                 snapshot: ({windows: [], sourceMonitorKey: "monitor", monitors: [
-                    {key: "monitor", geometry: {x: 0, y: 0, width: test.scenario.aspect * 900, height: 900}}
-                ]})
+                    {key: "monitor", slotStart: (test.scenario.base || 0) + 1, geometry: {x: 0, y: 0, width: test.scenario.aspect * 900, height: 900}}
+                ].concat(test.scenario.secondMonitor ? [{key: "other", slotStart: 1}] : [])})
             }
         }
     }
@@ -122,8 +125,16 @@ ShellRoot {
             }
             const card = grid.itemAtIndex(test.cursor)
             if (!test.check(!!card, "selected card is instantiated")) return
-            const slot = switcher.candidates[test.cursor].localSlot
-            if (!test.check(card.label === Commons.I18n.formatNumber(slot === 10 ? 0 : slot), "label matches bar numbering")) return
+            const candidate = switcher.candidates[test.cursor]
+            const local = candidate.id > (test.scenario.base || 0) && candidate.id <= (test.scenario.base || 0) + 10
+            const number = local ? candidate.localSlot === 10 ? 0 : candidate.localSlot : candidate.id
+            const expectedBadge = (local ? "" : "↳ ") + Commons.I18n.formatNumber(number)
+                + (test.scenario.monitorLabels && test.scenario.secondMonitor ? " · monitor" : "")
+            if (!test.check(card.badgeText === expectedBadge, "badge identifies the current block or visiting global ID")) return
+            if (!test.check(card.visiting === !local && (local ? card.tooltipText === "" : card.tooltipText !== ""),
+                "guest marker and explanation persist with either monitor-label setting")) return
+            const tooltip = Array.from(card.data).find(function(item) { return item.objectName === "workspaceTooltip" })
+            if (!test.check(!!tooltip && tooltip.contentItem.textFormat === Text.PlainText, "tooltip renders plain text")) return
             if (!test.check(card.y >= grid.contentY - 1 && card.y + card.height <= grid.contentY + grid.height + 1,
                 "selected card is fully visible at index " + test.cursor)) return
             if (test.scenario.count === 12 && test.cursor === 0 && !test.returning) {
