@@ -68,7 +68,12 @@ TestCase {
             {tag: "six", count: 6, rows: 2, columns: 3},
             {tag: "eight", count: 8, rows: 2, columns: 4},
             {tag: "nine", count: 9, rows: 3, columns: 3},
-            {tag: "ten", count: 10, rows: 3, columns: 4}
+            {tag: "ten", count: 10, rows: 3, columns: 4},
+            {tag: "twelve", count: 12, rows: 3, columns: 4},
+            {tag: "thirteen", count: 13, rows: 4, columns: 4},
+            {tag: "sixteen", count: 16, rows: 4, columns: 4},
+            {tag: "seventeen", count: 17, rows: 5, columns: 4},
+            {tag: "many", count: 40, rows: 10, columns: 4}
         ]
     }
     function test_workspaceGrid(data): void {

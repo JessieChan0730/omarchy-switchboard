@@ -1,10 +1,10 @@
 import type { Geometry, Size } from "../types/Models";
 
-/** Keep small overviews wide: 2 → 1×2, 4 → 2×2, 6 → 2×3, 8 → 2×4. */
+/** Keep small overviews wide; use four columns beyond the first twelve items. */
 export function workspaceGrid(count: number): { rows: number; columns: number } {
   if (!Number.isFinite(count) || count <= 0) return { rows: 1, columns: 1 };
   const items = Math.max(1, Math.floor(count));
-  const columns = Math.ceil(items / Math.floor(Math.sqrt(items)));
+  const columns = items > 12 ? 4 : Math.ceil(items / Math.floor(Math.sqrt(items)));
   return { rows: Math.ceil(items / columns), columns };
 }
 

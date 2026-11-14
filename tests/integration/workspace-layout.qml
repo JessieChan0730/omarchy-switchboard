@@ -13,6 +13,11 @@ ShellRoot {
         {name: "nine-fractional-scale", count: 9, width: 1600, height: 900, aspect: 16 / 9},
         {name: "ten-second-monitor", count: 10, width: 1600, height: 900, aspect: 16 / 9, base: 10},
         {name: "twelve-with-guests", count: 12, width: 1600, height: 900, aspect: 16 / 9, guestBase: 20},
+        {name: "thirteen-four-columns", count: 13, width: 1600, height: 900, aspect: 16 / 9, scroll: true},
+        {name: "sixteen-four-columns", count: 16, width: 1600, height: 900, aspect: 16 / 9, scroll: true},
+        {name: "seventeen-four-columns", count: 17, width: 1600, height: 900, aspect: 16 / 9, scroll: true},
+        {name: "many-four-columns", count: 40, width: 1600, height: 900, aspect: 16 / 9, scroll: true},
+        {name: "twelve-after-overflow", count: 12, width: 1600, height: 900, aspect: 16 / 9},
         {name: "nine-small-screen", count: 9, width: 1280, height: 720, aspect: 16 / 9},
         {name: "nine-portrait-previews", count: 9, width: 1600, height: 900, aspect: 9 / 16},
         {name: "nine-ultrawide-previews", count: 9, width: 1600, height: 900, aspect: 21 / 9},
@@ -23,6 +28,10 @@ ShellRoot {
     property int cursor: 0
     property bool selecting: true
     property bool returning: false
+    property bool testingWindows: false
+    property real twelveCardWidth: 0
+    property real twelveCardHeight: 0
+    property real twelvePanelHeight: 0
 
     QtObject {
         id: provider
@@ -35,7 +44,7 @@ ShellRoot {
         Rectangle {
             id: panel
             width: Math.min(parent.width - 48, switcher.preferredWidth + 40)
-            height: Math.min(parent.height - 64, switcher.implicitHeight + 40)
+            height: Math.min(parent.height - 64, switcher.preferredHeight + 40)
             Components.WorkspaceSwitcher {
                 id: switcher
                 anchors { fill: parent; margins: 20 }
@@ -57,12 +66,14 @@ ShellRoot {
     }
     Components.WindowSwitcher {
         id: windowSwitcher
-        width: 1000
+        width: 1600
         height: 570
         emptyText: "Empty"
         foregroundColor: "white"
         showMonitorLabels: false
-        candidates: [{key: "window:test", title: "Test", appId: "", workspaceKey: "workspace:20", monitorKey: "monitor"}]
+        candidates: Array.from({length: 17}, function(_, index) {
+            return {key: "window:" + index, title: "Test " + index, appId: "", workspaceKey: "workspace:20", monitorKey: "monitor"}
+        })
         snapshot: ({monitors: [], workspaces: [{key: "workspace:20", localSlot: 10, name: "20"}]})
     }
 
@@ -78,6 +89,30 @@ ShellRoot {
         repeat: true
         running: true
         onTriggered: {
+            if (test.testingWindows) {
+                const windowGrid = windowSwitcher.children[0] as GridView
+                if (test.selecting) {
+                    windowSwitcher.selectedIndex = test.returning ? 0 : windowSwitcher.candidates.length - 1
+                    windowGrid.forceLayout()
+                    test.selecting = false
+                    return
+                }
+                if (!test.check(windowSwitcher.columns === 4, "large window grid has four columns")) return
+                const card = windowGrid.itemAtIndex(windowSwitcher.selectedIndex)
+                if (!test.check(!!card && card.y >= windowGrid.contentY - 1
+                    && card.y + card.height <= windowGrid.contentY + windowGrid.height + 1, "selected window is fully visible")) return
+                if (!test.returning) {
+                    if (!test.check(windowGrid.interactive && windowGrid.contentY > 0, "large window grid scrolls to last row")) return
+                    test.returning = true
+                    test.selecting = true
+                    return
+                }
+                if (!test.check(Math.abs(windowGrid.contentY) < 0.01, "window grid returns to first row")) return
+                if (!test.check(card.subtitle === Commons.I18n.formatNumber(0), "window subtitle uses slot zero")) return
+                console.log("PASS: large window grid keeps four columns, reveals selection and uses slot zero")
+                Qt.quit()
+                return
+            }
             const grid = switcher.children[0] as GridView
             if (test.selecting) {
                 switcher.selectedIndex = test.cursor
@@ -91,8 +126,21 @@ ShellRoot {
             if (!test.check(card.label === Commons.I18n.formatNumber(slot === 10 ? 0 : slot), "label matches bar numbering")) return
             if (!test.check(card.y >= grid.contentY - 1 && card.y + card.height <= grid.contentY + grid.height + 1,
                 "selected card is fully visible at index " + test.cursor)) return
+            if (test.scenario.count === 12 && test.cursor === 0 && !test.returning) {
+                test.twelveCardWidth = card.width
+                test.twelveCardHeight = card.height
+                test.twelvePanelHeight = panel.height
+            }
+            if (test.scenario.count > 12) {
+                if (!test.check(switcher.columns === 4, "large workspace grid has four columns")) return
+                if (!test.check(Math.abs(card.width - test.twelveCardWidth) < 0.01
+                    && Math.abs(card.height - test.twelveCardHeight) < 0.01
+                    && Math.abs(panel.height - test.twelvePanelHeight) < 0.01, "overflow preserves twelve-item card and panel sizes")) return
+                if (test.cursor < 12 && !test.returning
+                    && !test.check(Math.abs(grid.contentY) < 0.01, "first twelve items remain visible without scrolling")) return
+            }
             if (test.scenario.scroll) {
-                if (!test.check(grid.interactive, "minimum size permits scrolling")) return
+                if (!test.check(grid.interactive, "overflow permits scrolling")) return
                 if (test.cursor === test.scenario.count - 1) {
                     if (!test.check(grid.contentY > 0, "last row scrolls into view")) return
                     test.cursor = 0
@@ -125,10 +173,9 @@ ShellRoot {
                 test.selecting = true
                 return
             }
-            const windowGrid = windowSwitcher.children[0] as GridView
-            if (!test.check(windowGrid.itemAtIndex(0).subtitle === Commons.I18n.formatNumber(0), "window subtitle uses slot zero")) return
-            console.log("PASS: workspace labels and window subtitle use 0 for slot 10")
-            Qt.quit()
+            test.testingWindows = true
+            test.returning = false
+            test.selecting = true
         }
     }
     Timer { interval: 30000; running: true; onTriggered: { console.error("FAIL: layout test timed out"); Qt.exit(1) } }

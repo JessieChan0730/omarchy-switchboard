@@ -11,7 +11,7 @@ Item {
     property int selectedIndex: -1
     property bool showWorkspaceLabels: true
     property bool showMonitorLabels: true
-    readonly property int columns: Math.max(1, Math.floor(width / 230))
+    readonly property int columns: candidates.length > 12 ? 4 : Math.max(1, Math.floor(width / 230))
     signal candidateClicked(int index)
     function reveal(): void { if (selectedIndex >= 0) grid.positionViewAtIndex(selectedIndex, GridView.Contain) }
     onSelectedIndexChanged: reveal()

@@ -232,7 +232,7 @@ Item {
         Rectangle {
             anchors.centerIn: parent
             width: Math.min(parent.width - 48, root.mode === "workspace" ? workspaceView.preferredWidth + 40 : 1000)
-            height: Math.min(parent.height - 64, root.mode === "workspace" ? workspaceView.implicitHeight + 40 : 570)
+            height: Math.min(parent.height - 64, root.mode === "workspace" ? workspaceView.preferredHeight + 40 : 570)
             radius: theme.cornerRadius
             color: theme.backgroundColor
             border.color: theme.borderColor

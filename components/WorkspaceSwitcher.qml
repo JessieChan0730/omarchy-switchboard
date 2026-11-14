@@ -19,15 +19,17 @@ Item {
     // qmllint enable missing-property
     readonly property int columns: layout.columns
     readonly property int rows: layout.rows
+    readonly property int visibleRows: Math.min(rows, 3)
     readonly property real previewAspectRatio: {
         const monitor = snapshot.monitors.find(function(m) { return m.key === switcher.snapshot.sourceMonitorKey }) || snapshot.monitors[0]
         return monitor && monitor.geometry.width > 0 && monitor.geometry.height > 0 ? monitor.geometry.width / monitor.geometry.height : 16 / 9
     }
-    // Fit every row within the screen before sizing the panel. Keep cards at
-    // least 100px tall; larger overviews can still scroll at that minimum.
+    // Fit up to three rows; additional items scroll without shrinking cards.
+    // Keep cards at least 100px tall on screens with less available height.
     readonly property real preferredCardHeight: Math.max(100, Math.min(480 / previewAspectRatio,
-        (maximumHeight - (rows - 1) * spacing) / rows))
+        (maximumHeight - (visibleRows - 1) * spacing) / visibleRows))
     readonly property real preferredWidth: columns * preferredCardHeight * previewAspectRatio + (columns - 1) * spacing
+    readonly property real preferredHeight: candidates.length > 0 ? visibleRows * grid.cellHeight - spacing : 120
     implicitHeight: candidates.length > 0 ? rows * grid.cellHeight - spacing : 120
     signal candidateClicked(int index)
 
