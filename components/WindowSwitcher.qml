@@ -44,6 +44,12 @@ Item {
             onClicked: switcher.candidateClicked(index)
         }
     }
+    ScrollPositionIndicator {
+        anchors { top: grid.top; bottom: grid.bottom; left: parent.right; leftMargin: 8 }
+        foregroundColor: switcher.foregroundColor
+        contentHeight: grid.contentHeight
+        contentOffset: grid.contentY
+    }
     PlainText {
         anchors.centerIn: parent
         width: parent.width

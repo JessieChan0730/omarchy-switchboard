@@ -87,6 +87,16 @@ ShellRoot {
         return false
     }
 
+    function checkIndicator(view: Item, scrolling: bool, edge: int): bool {
+        const indicator = Array.from(view.children).find(function(item) { return item.objectName === "scrollPositionIndicator" })
+        if (!check(!!indicator && indicator.visible === scrolling, "position hint appears only with overflow")) return false
+        if (!scrolling) return true
+        if (!check(indicator.width === 4 && indicator.thumbLength > 0 && indicator.thumbLength < indicator.height
+            && indicator.thumbOffset >= 0 && indicator.thumbOffset + indicator.thumbLength <= indicator.height + 0.01,
+            "thin position hint stays within its track")) return false
+        return check(edge < 0 || Math.abs(indicator.position - edge) < 0.01, "position hint reaches the scroll edge")
+    }
+
     Timer {
         interval: 50
         repeat: true
@@ -104,6 +114,7 @@ ShellRoot {
                 const card = windowGrid.itemAtIndex(windowSwitcher.selectedIndex)
                 if (!test.check(!!card && card.y >= windowGrid.contentY - 1
                     && card.y + card.height <= windowGrid.contentY + windowGrid.height + 1, "selected window is fully visible")) return
+                if (!test.checkIndicator(windowSwitcher, true, test.returning ? 0 : 1)) return
                 if (!test.returning) {
                     if (!test.check(windowGrid.interactive && windowGrid.contentY > 0, "large window grid scrolls to last row")) return
                     test.returning = true
@@ -125,6 +136,8 @@ ShellRoot {
             }
             const card = grid.itemAtIndex(test.cursor)
             if (!test.check(!!card, "selected card is instantiated")) return
+            if (!test.checkIndicator(switcher, !!test.scenario.scroll,
+                test.cursor === 0 ? 0 : test.cursor === test.scenario.count - 1 ? 1 : -1)) return
             const candidate = switcher.candidates[test.cursor]
             const local = candidate.id > (test.scenario.base || 0) && candidate.id <= (test.scenario.base || 0) + 10
             const number = local ? candidate.localSlot === 10 ? 0 : candidate.localSlot : candidate.id
