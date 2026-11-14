@@ -1,5 +1,21 @@
 import type { Geometry, Size } from "../types/Models";
 
+/** Move to a neighbour in the same row or column; keep selection at gaps and edges. */
+export function navigateGrid(
+  index: number,
+  count: number,
+  columns: number,
+  direction: "left" | "right" | "up" | "down",
+): number {
+  if (count <= 0) return -1;
+  if (index < 0 || index >= count || columns < 1) return index;
+  const column = index % columns;
+  if (direction === "left") return column > 0 ? index - 1 : index;
+  if (direction === "right") return column + 1 < columns && index + 1 < count ? index + 1 : index;
+  if (direction === "up") return index >= columns ? index - columns : index;
+  return index + columns < count ? index + columns : index;
+}
+
 /** Keep small overviews wide; use four columns beyond the first twelve items. */
 export function workspaceGrid(count: number): { rows: number; columns: number } {
   if (!Number.isFinite(count) || count <= 0) return { rows: 1, columns: 1 };

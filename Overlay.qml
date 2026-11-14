@@ -112,9 +112,10 @@ Item {
     }
     function navigate(key: int): void {
         const columns = mode === "workspace" ? workspaceView.columns : windowView.columns
-        const delta = key === Qt.Key_Left ? -1 : key === Qt.Key_Right ? 1 : key === Qt.Key_Up ? -columns : columns
-        const index = session.selectedIndex + delta
-        session.select(Math.max(0, Math.min(candidates.length - 1, index)))
+        const direction = key === Qt.Key_Left ? "left" : key === Qt.Key_Right ? "right" : key === Qt.Key_Up ? "up" : "down"
+        // qmllint disable missing-property
+        session.select(Logic.navigateGrid(session.selectedIndex, candidates.length, columns, direction))
+        // qmllint enable missing-property
     }
     function queryModifiers(): void {
         if (!opened || !request.holdToConfirm || modifierProc.running) return
@@ -213,6 +214,13 @@ Item {
         id: overlay
         shown: root.opened
         shownKeyboardFocus: root.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        // Held Super would otherwise let compositor shortcuts consume arrows.
+        // The inhibitor belongs to this surface and is released when it closes.
+        ShortcutInhibitor {
+            id: shortcutInhibitor
+            window: overlay
+            enabled: root.opened
+        }
         Rectangle {
             anchors.centerIn: parent
             width: Math.min(parent.width - 48, root.mode === "workspace" ? workspaceView.preferredWidth + 40 : 1000)
@@ -229,7 +237,9 @@ Item {
                     if (event.key === Qt.Key_Escape) root.dismiss()
                     else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.confirm()
                     else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-                        if (!root.request.globalInput) root.step((event.modifiers & Qt.ShiftModifier) || event.key === Qt.Key_Backtab ? -1 : 1)
+                        // While inhibited, Tab reaches Qt instead of the global shortcut.
+                        if (!root.request.globalInput || shortcutInhibitor.active)
+                            root.step((event.modifiers & Qt.ShiftModifier) || event.key === Qt.Key_Backtab ? -1 : 1)
                     } else if ([Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down].indexOf(event.key) >= 0) root.navigate(Commons.Util.readingKey(event))
                     else return
                     event.accepted = true

@@ -81,4 +81,27 @@ TestCase {
         compare(grid.columns, data.columns)
         verify(grid.rows * grid.columns >= data.count)
     }
+
+    function test_gridNavigation_data() {
+        return [
+            {tag: "middle-left", index: 4, count: 9, columns: 3, direction: "left", expected: 3},
+            {tag: "middle-right", index: 4, count: 9, columns: 3, direction: "right", expected: 5},
+            {tag: "middle-up", index: 4, count: 9, columns: 3, direction: "up", expected: 1},
+            {tag: "middle-down", index: 4, count: 9, columns: 3, direction: "down", expected: 7},
+            {tag: "left-edge", index: 3, count: 9, columns: 3, direction: "left", expected: 3},
+            {tag: "right-edge", index: 2, count: 9, columns: 3, direction: "right", expected: 2},
+            {tag: "top-edge", index: 1, count: 9, columns: 3, direction: "up", expected: 1},
+            {tag: "bottom-edge", index: 7, count: 9, columns: 3, direction: "down", expected: 7},
+            {tag: "last-row-gap", index: 5, count: 8, columns: 3, direction: "down", expected: 5},
+            {tag: "last-row-neighbour", index: 4, count: 8, columns: 3, direction: "down", expected: 7},
+            {tag: "last-card-right", index: 7, count: 8, columns: 3, direction: "right", expected: 7},
+            {tag: "scroll-row", index: 11, count: 17, columns: 4, direction: "down", expected: 15},
+            {tag: "single", index: 0, count: 1, columns: 4, direction: "right", expected: 0},
+            {tag: "empty", index: -1, count: 0, columns: 1, direction: "down", expected: -1},
+            {tag: "unselected", index: -1, count: 9, columns: 3, direction: "right", expected: -1}
+        ]
+    }
+    function test_gridNavigation(data): void {
+        compare(Logic.navigateGrid(data.index, data.count, data.columns, data.direction), data.expected)
+    }
 }

@@ -102,6 +102,10 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"workspace","direction":-
 旧版两对象回切绑定、全局入口和 `previous` IPC 已移除。更新安装时重载 Hyprland，
 恢复系统及用户配置中的反引号绑定；Tab 面板仍使用最近真实焦点历史排序。
 
+面板打开时，按住 Win/Alt 也可用方向键按网格行列选择；左右不跨行，上下保持同列，
+遇到边缘或末行空位时保持原选择。Tab / Shift+Tab 按候选顺序循环，Enter 确认、Esc 取消。
+面板关闭后，Win+方向键恢复系统或用户配置的用途。
+
 修饰键确认目前在面板打开期间异步调用本机 `hl.is_key_down()`，同时检查左右 Alt 或左右 Super。
 持续按住不会因固定超时确认；查询失败时保留面板，可用 Enter 或 Esc。
 全局快捷键和面板 Tab 使用单一路径，避免同一次按键重复步进。该路径仍需真实键盘时序验收。
