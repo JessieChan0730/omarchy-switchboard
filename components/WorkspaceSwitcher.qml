@@ -46,7 +46,10 @@ Item {
         grid.contentY = Math.max(0, Math.min(maxOffset, offset))
     }
     onSelectedIndexChanged: Qt.callLater(revealSelection)
-    onCandidatesChanged: Qt.callLater(function() { grid.contentY = 0; switcher.revealSelection() })
+    onCandidatesChanged: Qt.callLater(function() {
+        if (switcher.candidates.length === 0) grid.contentY = 0
+        switcher.revealSelection()
+    })
     onHeightChanged: Qt.callLater(revealSelection)
     onWidthChanged: Qt.callLater(revealSelection)
     GridView {

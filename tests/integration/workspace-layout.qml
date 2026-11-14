@@ -12,6 +12,7 @@ ShellRoot {
         {name: "eight", count: 8, width: 1600, height: 900, aspect: 16 / 9},
         {name: "nine-fractional-scale", count: 9, width: 1600, height: 900, aspect: 16 / 9},
         {name: "ten-second-monitor", count: 10, width: 1600, height: 900, aspect: 16 / 9, base: 10},
+        {name: "twelve-with-guests", count: 12, width: 1600, height: 900, aspect: 16 / 9, guestBase: 20},
         {name: "nine-small-screen", count: 9, width: 1280, height: 720, aspect: 16 / 9},
         {name: "nine-portrait-previews", count: 9, width: 1600, height: 900, aspect: 9 / 16},
         {name: "nine-ultrawide-previews", count: 9, width: 1600, height: 900, aspect: 21 / 9},
@@ -44,7 +45,8 @@ ShellRoot {
                 previewProvider: provider
                 showMonitorLabels: false
                 candidates: Array.from({length: test.scenario.count}, function(_, index) {
-                    const id = (test.scenario.base || 0) + index + 1
+                    const id = test.scenario.guestBase && index >= 10 ? test.scenario.guestBase + index - 9
+                        : (test.scenario.base || 0) + index + 1
                     return {key: "workspace:" + id, id: id, name: String(id), localSlot: index % 10 + 1, monitorKey: "monitor"}
                 })
                 snapshot: ({windows: [], sourceMonitorKey: "monitor", monitors: [

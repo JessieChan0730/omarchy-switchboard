@@ -43,6 +43,17 @@ export function selectSession(state: SessionState, index: number): SessionState 
     ? { ...state, selectedIndex: index } : state;
 }
 
+/** Keep the selected identity on refresh; cancel if that workspace has left. */
+export function refreshSession(state: SessionState, sessionId: number, keys: readonly string[]): SessionState {
+  if (state.phase !== "selecting" || state.sessionId !== sessionId) return state;
+  if (keys.length === state.candidateKeys.length && keys.every((key, i) => key === state.candidateKeys[i])) return state;
+  const selectedKey = state.candidateKeys[state.selectedIndex];
+  const selectedIndex = selectedKey ? keys.indexOf(selectedKey)
+    : initialSelection(keys.map((key) => ({ key })), state.context.originWorkspaceKey, state.request.direction);
+  if (selectedKey && selectedIndex < 0) return createIdleSession(sessionId);
+  return { ...state, candidateKeys: keys.slice(), selectedIndex };
+}
+
 export function confirmSession(state: SessionState, sessionId: number): SessionState {
   if (state.sessionId !== sessionId) return state;
   if (state.phase === "preparing") return { ...state, releasePending: true };

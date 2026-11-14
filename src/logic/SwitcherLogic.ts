@@ -72,6 +72,24 @@ export function workspaceActivationTarget(
     ? workspace : null;
 }
 
+/** Refresh visiting workspaces while preserving the order the user is navigating. */
+export function reconcileWorkspaceCandidates(
+  snapshot: DesktopSnapshot,
+  history: readonly string[],
+  previousKeys: readonly string[],
+): readonly WorkspaceRecord[] {
+  const fresh = workspaceCandidates(snapshot, history);
+  const remaining = new Map(fresh.map((workspace) => [workspace.key, workspace]));
+  const out: WorkspaceRecord[] = [];
+  for (const key of previousKeys) {
+    const workspace = remaining.get(key);
+    if (!workspace) continue;
+    out.push(workspace);
+    remaining.delete(key);
+  }
+  return out.concat(fresh.filter((workspace) => remaining.has(workspace.key)));
+}
+
 export function initialSelection(candidates: readonly { readonly key: string }[], current: string | null, direction: number, occupiedFirst = false): number {
   if (candidates.length === 0) return -1;
   const anchor = candidates.findIndex((c) => c.key === current);

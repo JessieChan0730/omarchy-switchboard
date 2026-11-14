@@ -71,6 +71,18 @@ Item {
         // Keep the opening screen as the source even if desktop focus changes.
         const scoped = Object.assign({}, next, {sourceMonitorKey: sourceMonitor})
         if (JSON.stringify(scoped) !== JSON.stringify(snapshot)) snapshot = scoped
+        if (mode === "workspace" && !errorKey) {
+            // Reconcile arrivals, departures and renumbering against the locked
+            // screen, keeping existing order and the selected global identity.
+            // qmllint disable missing-property
+            const fresh = Logic.reconcileWorkspaceCandidates(Object.assign({}, scoped, {currentWorkspaceKey: currentKey}),
+                desktopAdapter.workspaceHistory, candidates.map(function(c) { return c.key }))
+            // qmllint enable missing-property
+            if (JSON.stringify(fresh) !== JSON.stringify(candidates)) {
+                candidates = fresh
+                session.refresh(fresh.map(function(c) { return c.key }))
+            }
+        }
     }
     function dismiss(): void {
         close()

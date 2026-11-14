@@ -20,6 +20,10 @@ QtObject {
     }
     function step(direction: int): void { state = Logic.stepSession(state, state.sessionId, direction) }
     function select(index: int): void { state = Logic.selectSession(state, index) }
+    function refresh(keys: var): void {
+        state = Logic.refreshSession(state, state.sessionId, keys)
+        deliver()
+    }
     function confirm(): void {
         state = Logic.confirmSession(state, state.sessionId)
         deliver()
