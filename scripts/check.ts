@@ -90,6 +90,7 @@ try {
       run("luac", ["-p", "bindings.lua"]);
       run("bash", ["-n", "scripts/install.sh", "scripts/uninstall.sh"]);
       run("python3", ["-m", "unittest", "discover", "-s", "tests/installer"]);
+      run("python3", ["-m", "unittest", "discover", "-s", "tests/previews"]);
     }
   }
 } catch (error) {

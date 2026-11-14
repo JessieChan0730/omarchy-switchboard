@@ -25,8 +25,10 @@ Win+Tab 只列出打开面板时聚焦显示器的工作区，包含该显示器
 
 窗口卡片目前显示应用图标和标题，超过 12 个窗口时固定四列并可滚动。工作区卡片通过 `ScreencopyView` 实时捕获窗口内容，
 按真实窗口位置合成预览；捕获暂不可用时显示应用图标或名称。
-只捕获面板中可见的卡片，关闭面板后停止捕获并销毁预览组件，不保留截图缓存。
-**图像 LRU 与 GPU/内存性能预算尚未实现。** 多显示器逻辑已有自动测试，
+只捕获面板中可见的卡片，关闭面板后停止捕获并销毁窗口捕获组件，不保留窗口截图缓存。
+桌面壁纸提前生成最长边不超过 960 像素的小图并预加载，关闭面板后保留，避免大壁纸在打开时延迟出现。
+壁纸变化时刷新，磁盘缓存最多保留四张，位于 `${XDG_CACHE_HOME:-~/.cache}/omarchy-switchboard/backgrounds/`。
+**窗口图像 LRU 与完整 GPU/内存性能预算尚未实现。** 多显示器逻辑已有自动测试，
 双屏实机、全屏/XWayland、左右修饰键与极快点按仍需按 [桌面验收说明](tests/integration/README.md) 测试。
 
 ## 开发
@@ -35,7 +37,8 @@ Win+Tab 只列出打开面板时聚焦显示器的工作区，包含该显示器
 
 需要 Node.js 22.12 或更高版本、npm、Python 3、Lua（`lua`、`luac`）、Bash，以及与当前 Omarchy
 匹配的 Qt 6、Quickshell 和 Omarchy shell 源码。安装与桌面测试需要正在运行的 Hyprland Lua 会话。
-Node.js 和 npm 包只用于开发及构建，插件运行时使用 QML、预编译 ESM 和 Lua。
+Node.js 和 npm 包只用于开发及构建，插件运行时使用 QML、预编译 ESM 和 Lua；
+壁纸缓存使用 Python 3 与 ImageMagick（Omarchy 默认安装），在独立进程中准备小图。
 
 ```bash
 npm ci
@@ -50,7 +53,7 @@ npm run check
 | `npm run lint:qml` | 检查 QML 与 Omarchy/Quickshell 导入 |
 | `npm run test:qt` | 在 Qt 引擎中测试发布 ESM，并验证真实切换组件的布局与编号 |
 | `npm run validate` | 执行 Omarchy manifest 校验 |
-| `npm run check` | 构建、QML 检查、Qt 测试、manifest、Lua/Bash 语法与安装器测试 |
+| `npm run check` | 构建、QML 检查、Qt 测试、manifest、Lua/Bash 语法、安装器与壁纸缓存测试 |
 
 `QT_BIN_DIR` 可指定 Qt 工具目录，`OMARCHY_SHELL_DIR` 可指定 shell 源码目录。
 QML 工具元数据的兼容处理仅写入仓库 `.cache/`，不改动系统源码。
@@ -162,8 +165,8 @@ Omarchy 默认为每台显示器分配 10 个本地槽位；插拔显示器或�
 `↳ 全局 ID`，不受显示器数量或 `showMonitorLabels` 设置影响。判断依据为当前显示器编号段，
 手动移屏与断屏合并使用相同规则；编号未知时显示完整 ID。普通命名工作区（如 `a`）暂不列入概览，后续适配见
 [已知问题](docs/known-issues.md)。
-`previewMode` 和缓存相关字段保留为后续配置，当前工作区使用实时预览，不读取这些字段，
-也没有图像缓存。
+`previewMode` 和缓存相关字段保留为后续配置，当前工作区使用实时预览，不读取这些字段。
+壁纸使用固定预算的小图缓存，窗口内容没有图像缓存。
 
 窗口与工作区分别维护用于候选排序的 MRU 历史；预览高亮和取消不改变历史。工作区 Tab 循环和方向键选择
 概览中的全部卡片，包括空工作区；全部为空时仍可选择前 5 个槽位。打开或取消面板不创建工作区，

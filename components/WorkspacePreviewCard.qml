@@ -52,8 +52,8 @@ Rectangle {
                 objectName: "workspaceBackground"
                 path: card.backgroundPath
                 cached: true
-                constrainDecode: true
-                decodeSize: Qt.size(Math.ceil(preview.width), Math.ceil(preview.height))
+                // This is already a bounded thumbnail. Using its native size
+                // shares the provider's pinned decode across every card size.
             }
         }
 
