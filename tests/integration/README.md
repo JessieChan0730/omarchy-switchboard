@@ -8,10 +8,10 @@
 
 先运行 `./scripts/install.sh`，通过 `omarchy-shell shell summon jessie.switchboard
 '{"mode":"workspace"}'` 或窗口模式测试面板。`status` 应报告 ready 和候选数量。
-启用组合键使用 `./scripts/install.sh --bindings`；完成后可用 `--no-bindings` 恢复命令测试模式。
+已有安装使用 `./scripts/install.sh` 保留当前绑定模式，不为测试切换 `--bindings` / `--no-bindings`。
 本清单以四个全局快捷键的支持范围为准：`Win+Tab`、`Win+Shift+Tab`、`Alt+Tab`、
-`Alt+Shift+Tab`（Win 对应 Hyprland 的 Super）。旧版回切绑定的代码清理仍待完成，
-仅修改文档不构成精简后快捷键行为的验收。
+`Alt+Shift+Tab`（Win 对应 Hyprland 的 Super）。旧版回切绑定、全局入口和 `previous` IPC
+已移除；升级后需核对反引号恢复系统或用户用途，四个 Tab 组合仍各只有一个插件绑定。
 
 按计划书记录以下实机结果，不能用 offscreen 或假适配器替代：
 

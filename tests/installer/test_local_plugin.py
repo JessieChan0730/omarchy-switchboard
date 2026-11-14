@@ -121,6 +121,36 @@ class InstallerTests(unittest.TestCase):
         self.assertNotEqual(manifest["developmentBuildId"], old_build)
         self.assertTrue((self.installer.plugin / manifest["entryPoints"]["overlay"]).exists())
 
+    def test_update_removes_legacy_bindings_and_preserves_user_overrides(self):
+        original = self.installer.bindings.read_text() + (
+            'o.rebind("SUPER + grave", "User Quake console", function() end)\n'
+            'o.rebind("ALT + grave", "User app shortcut", function() end)\n'
+        )
+        module.atomic_write(self.installer.bindings, original)
+        baseline = self.root / "user-bindings.lua"
+        baseline.write_text(original)
+        harness = module.ROOT / "tests/fixtures/bindings_harness.lua"
+        def assert_bindings(mode):
+            subprocess.run(["lua", str(harness), str(self.installer.bindings), mode, str(baseline)], check=True)
+
+        self.installer.install(True)
+        legacy_file = self.installer.plugin / "bindings.lua"
+        legacy = ('o.rebind("SUPER + grave", "Switchboard: legacy workspace toggle", function() end)\n'
+                  'o.rebind("ALT + grave", "Switchboard: legacy window toggle", function() end)\n')
+        legacy_file.write_text(legacy_file.read_text().replace("M.ready = true\n", legacy + "M.ready = true\n"))
+        assert_bindings("legacy")
+        managed_before = self.installer.bindings.read_text()
+
+        self.installer.install(None)
+        assert_bindings("plugin")
+        self.assertEqual(self.installer.bindings.read_text(), managed_before)
+        entry = next(entry for entry in json.loads(self.installer.shell_config.read_text())["plugins"]
+                     if entry["id"] == module.PLUGIN_ID)
+        self.assertTrue(entry["bindingsEnabled"])
+        self.installer.uninstall()
+        self.assertEqual(self.installer.bindings.read_text(), original)
+        assert_bindings("none")
+
     def test_malformed_include_and_invalid_json_are_preserved(self):
         module.atomic_write(self.installer.bindings, module.BEGIN + '\n')
         with self.assertRaises(ValueError):

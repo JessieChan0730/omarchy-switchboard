@@ -32,7 +32,7 @@ Win+Tab 只列出打开面板时聚焦显示器的工作区，包含该显示器
 
 ### 环境与检查
 
-需要 Node.js 22.12 或更高版本、npm、Python 3、Lua（`luac`）、Bash，以及与当前 Omarchy
+需要 Node.js 22.12 或更高版本、npm、Python 3、Lua（`lua`、`luac`）、Bash，以及与当前 Omarchy
 匹配的 Qt 6、Quickshell 和 Omarchy shell 源码。安装与桌面测试需要正在运行的 Hyprland Lua 会话。
 Node.js 和 npm 包只用于开发及构建，插件运行时使用 QML、预编译 ESM 和 Lua。
 
@@ -94,11 +94,13 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"workspace","direction":-
 | `Alt+Tab` | 窗口正向选择，松开 Alt 确认 |
 | `Alt+Shift+Tab` | 窗口反向选择，松开 Alt 确认 |
 
-接管范围为上述四个 Tab 组合，分别替换原来的窗口和工作区循环。精简后的绑定应保留
-Omarchy 的 Quake console 入口及其他系统快捷键。自定义键盘布局可调整仓库 `bindings.lua`，重新安装后测试。
+接管范围为上述四个 Tab 组合，分别替换原来的窗口和工作区循环。
+`Win+反引号` 保留系统或用户配置的 Quake console 入口，`Alt+反引号`、
+`Win+Shift+反引号` 和 `Win+Ctrl+Tab` 保留原有绑定。自定义键盘布局可调整仓库
+`bindings.lua`，重新安装后测试。
 
-实现同步状态：本次已收敛文档与规划，当前 `bindings.lua` 和 `Overlay.qml` 仍保留旧版
-两对象回切绑定及 `previous` IPC；代码精简尚待完成，现有安装包的 `--bindings` 仍会接管这些旧入口。
+旧版两对象回切绑定、全局入口和 `previous` IPC 已移除。更新安装时重载 Hyprland，
+恢复系统及用户配置中的反引号绑定；Tab 面板仍使用最近真实焦点历史排序。
 
 修饰键确认目前在面板打开期间异步调用本机 `hl.is_key_down()`，同时检查左右 Alt 或左右 Super。
 持续按住不会因固定超时确认；查询失败时保留面板，可用 Enter 或 Esc。

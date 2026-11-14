@@ -14,12 +14,11 @@ TestCase {
         compare(Logic.wrapIndex(0, 1, 0), -1)
     }
 
-    function test_historyDeduplicatesAndSkipsClosedTargets(): void {
+    function test_historyDeduplicatesAndKeepsMostRecentFirst(): void {
         const history = Logic.recordFocus(["window:a", "window:b"], "window:b")
         compare(history, ["window:b", "window:a"])
         compare(Logic.recordFocus(history, "window:b"), history)
-        compare(Logic.previousObject(history, "window:b", ["window:b"]), null)
-        compare(Logic.previousObject(history, "window:b", fixture.windowKeys), "window:a")
+        compare(Logic.recordFocus(history, "window:c", 2), ["window:c", "window:b"])
     }
 
     function test_staleSessionCannotCancelNewSession(): void {

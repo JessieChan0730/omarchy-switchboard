@@ -34,10 +34,5 @@ end)
 bind("SUPER + SHIFT + TAB", "Switchboard: previous workspace", "workspace-backward", function()
   hl.dispatch(hl.dsp.focus({ workspace = "m-1" }))
 end)
-bind("ALT + grave", "Switchboard: previous window toggle", "previous-window", next_window(false))
-bind("SUPER + grave", "Switchboard: previous workspace toggle", "previous-workspace", function()
-  hl.dispatch(hl.dsp.workspace.toggle_special("qconsole"))
-end)
--- SUPER+SHIFT+grave and SUPER+CTRL+TAB keep their existing bindings.
 M.ready = true
 return M

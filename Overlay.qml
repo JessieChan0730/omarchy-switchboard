@@ -110,19 +110,6 @@ Item {
         dismiss()
         activateTimer.restart()
     }
-    function previous(kind: string): void {
-        if (opened || activation.busy || pendingActivation) return
-        desktopAdapter.recordCurrentFocus()
-        const snap = desktopAdapter.snapshot(config.settings.slotsPerMonitor)
-        // qmllint disable missing-property
-        const valid = kind === "window" ? snap.windows : Logic.fillWorkspaceSlots(snap, config.settings.slotsPerMonitor)
-        const key = Logic.previousObject(kind === "window" ? desktopAdapter.windowHistory : desktopAdapter.workspaceHistory,
-            kind === "window" ? snap.currentWindowKey || "" : snap.currentWorkspaceKey || "", valid.map(function(c) { return c.key }))
-        // qmllint enable missing-property
-        if (!key) return
-        desktopAdapter.suppressHistory = true
-        queueActivation({kind: kind, key: key, workspace: kind === "workspace" ? valid.find(function(w) { return w.key === key }) : null})
-    }
     function navigate(key: int): void {
         const columns = mode === "workspace" ? workspaceView.columns : windowView.columns
         const delta = key === Qt.Key_Left ? -1 : key === Qt.Key_Right ? 1 : key === Qt.Key_Up ? -columns : columns
@@ -212,8 +199,6 @@ Item {
     GlobalShortcut { appid: root.pluginId; name: "window-backward"; onPressed: root.open('{"mode":"window","direction":-1,"holdToConfirm":true,"globalInput":true}') }
     GlobalShortcut { appid: root.pluginId; name: "workspace-forward"; onPressed: root.open('{"mode":"workspace","direction":1,"holdToConfirm":true,"globalInput":true}') }
     GlobalShortcut { appid: root.pluginId; name: "workspace-backward"; onPressed: root.open('{"mode":"workspace","direction":-1,"holdToConfirm":true,"globalInput":true}') }
-    GlobalShortcut { appid: root.pluginId; name: "previous-window"; onPressed: root.previous("window") }
-    GlobalShortcut { appid: root.pluginId; name: "previous-workspace"; onPressed: root.previous("workspace") }
 
     Commons.ShellIpc {
         target: root.pluginId
@@ -221,7 +206,6 @@ Item {
         function step(direction: int): void { root.step(direction < 0 ? -1 : 1) }
         function confirm(): void { root.confirm() }
         function cancel(): void { root.dismiss() }
-        function previous(kind: string): void { if (kind === "window" || kind === "workspace") root.previous(kind) }
         function settings(json: string): bool { try { return config.save(JSON.parse(json)) } catch (error) { return false } }
     }
 

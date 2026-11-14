@@ -190,12 +190,12 @@ TestCase {
         // The top bar exposes numbered workspaces, not named/special ones.
         verify(!queue.some(function(w) { return w.key === "named" }))
     }
-    function test_twoObjectToggleAndClosedHistory() {
-        let history = Logic.recordFocus(["a", "b", "c"], "b")
-        compare(Logic.previousObject(history, "b", ["a", "b", "c"]), "a")
-        history = Logic.recordFocus(history, "a")
-        compare(Logic.previousObject(history, "a", ["a", "b", "c"]), "b")
-        compare(Logic.previousObject(history, "a", ["a", "c"]), "c")
+    function test_tabCandidatesSkipClosedHistoryAndKeepPreviousFirst() {
+        const snap = desktop(true)
+        const history = Logic.recordFocus(["window:closed", "window:1", "window:5"], "window:3")
+        compare(keys(Logic.windowCandidates(snap, history)), ["window:3", "window:1", "window:5"])
+        snap.windows = snap.windows.filter(function(window) { return window.key !== "window:1" })
+        compare(keys(Logic.windowCandidates(snap, history)), ["window:3", "window:5"])
     }
     function test_luaStringsEscapeControlAndQuotes() {
         compare(Logic.luaString('a"b\\c\n'), '"a\\"b\\\\c\\010"')
