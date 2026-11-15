@@ -42,7 +42,32 @@ omarchy plugin add https://github.com/JessieChan0730/omarchy-switchboard.git --e
 
 插件安装到 `~/.config/omarchy/plugins/jessie.switchboard/`。首次安装默认启用切换快捷键，已有快捷键设置优先。停用、卸载插件或关闭插件快捷键后，会恢复原快捷键。
 
-### 检查与试用
+### 从源码安装（开发用途）
+
+额外需要 Node.js **22.12 或更高版本**、npm、Lua（`lua`、`luac`）、Bash，以及 Qt 工具 `qmllint`、`qmltestrunner` 和 Omarchy shell 源码。
+
+```bash
+git clone https://github.com/JessieChan0730/omarchy-switchboard.git
+cd omarchy-switchboard
+npm ci
+./scripts/install.sh
+```
+
+脚本运行完整检查后部署并启用本地开发构建。首次源码安装默认保留现有快捷键；需要使用上表快捷键时执行 `./scripts/install.sh --bindings`，恢复原快捷键时执行 `./scripts/install.sh --no-bindings`。重复部署保留当前快捷键模式和插件设置。
+
+安装器会备份配置和已有同 ID 插件，清理旧版本的受管理 Lua include，重新加载 Hyprland 与插件，并核对运行实例的 `buildId` 和就绪状态；失败时回滚。它会拒绝覆盖 Git 安装，避免破坏 `.git` 和官方更新能力。
+
+### 从旧源码安装迁移到 Git 安装
+
+在源码仓库执行：
+
+```bash
+./scripts/migrate.sh
+```
+
+迁移脚本先备份，再卸载受管理的开发安装，通过官方 `plugin add` 安装 Git 仓库，并恢复插件设置和快捷键模式；失败时回滚。默认使用上述 GitHub URL，也可通过 `--url <Git URL>` 指定发布仓库。如果首次开发安装曾覆盖另一个同 ID 插件，脚本会要求先处理该原安装，避免丢失它。
+
+## 检查与试用
 
 ```bash
 # 查看插件和快捷键状态
@@ -68,31 +93,6 @@ omarchy-shell jessie.switchboard settings '{"bindingsEnabled":false}'
 # 再次启用插件快捷键
 omarchy-shell jessie.switchboard settings '{"bindingsEnabled":true}'
 ```
-
-### 从源码安装（开发用途）
-
-额外需要 Node.js **22.12 或更高版本**、npm、Lua（`lua`、`luac`）、Bash，以及 Qt 工具 `qmllint`、`qmltestrunner` 和 Omarchy shell 源码。
-
-```bash
-git clone https://github.com/JessieChan0730/omarchy-switchboard.git
-cd omarchy-switchboard
-npm ci
-./scripts/install.sh
-```
-
-脚本运行完整检查后部署并启用本地开发构建。首次源码安装默认保留现有快捷键；需要使用上表快捷键时执行 `./scripts/install.sh --bindings`，恢复原快捷键时执行 `./scripts/install.sh --no-bindings`。重复部署保留当前快捷键模式和插件设置。
-
-安装器会备份配置和已有同 ID 插件，清理旧版本的受管理 Lua include，重新加载 Hyprland 与插件，并核对运行实例的 `buildId` 和就绪状态；失败时回滚。它会拒绝覆盖 Git 安装，避免破坏 `.git` 和官方更新能力。
-
-### 从旧源码安装迁移到 Git 安装
-
-在源码仓库执行：
-
-```bash
-./scripts/migrate.sh
-```
-
-迁移脚本先备份，再卸载受管理的开发安装，通过官方 `plugin add` 安装 Git 仓库，并恢复插件设置和快捷键模式；失败时回滚。默认使用上述 GitHub URL，也可通过 `--url <Git URL>` 指定发布仓库。如果首次开发安装曾覆盖另一个同 ID 插件，脚本会要求先处理该原安装，避免丢失它。
 
 ## 更新
 

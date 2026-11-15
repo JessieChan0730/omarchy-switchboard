@@ -42,7 +42,32 @@ omarchy plugin add https://github.com/JessieChan0730/omarchy-switchboard.git --e
 
 The plugin is installed at `~/.config/omarchy/plugins/jessie.switchboard/`. A new installation enables the switching shortcuts by default; existing shortcut settings take precedence. Disabling or removing the plugin, or turning off its shortcuts, restores your original shortcuts.
 
-### Check and try the plugin
+### Install from source (development)
+
+Development additionally requires Node.js **22.12 or later**, npm, Lua (`lua`, `luac`), Bash, the Qt tools `qmllint` and `qmltestrunner`, and the Omarchy shell sources.
+
+```bash
+git clone https://github.com/JessieChan0730/omarchy-switchboard.git
+cd omarchy-switchboard
+npm ci
+./scripts/install.sh
+```
+
+The script runs all checks and deploys a local development build. A first source installation preserves your existing shortcuts. Use `./scripts/install.sh --bindings` to enable the plugin shortcuts or `./scripts/install.sh --no-bindings` to restore your original shortcuts. Repeated deployments retain settings and binding mode.
+
+The installer backs up configuration and any existing plugin with the same ID, removes legacy managed Lua includes, reloads Hyprland and the plugin, and verifies the running instance's build ID and readiness. Failed deployments roll back. The installer refuses to overwrite a Git installation, preserving its checkout and official update support.
+
+### Migrate an existing source installation to Git
+
+Run in the source repository:
+
+```bash
+./scripts/migrate.sh
+```
+
+The script backs up and uninstalls the managed development installation, installs the Git repository with the official command, and restores settings and binding mode. Failure rolls back the migration. It defaults to the GitHub URL above; use `--url <Git URL>` for another release repository. If the first development installation replaced an earlier plugin with the same ID, resolve that original installation before migrating.
+
+## Check and try the plugin
 
 ```bash
 # Check plugin and shortcut status
@@ -68,31 +93,6 @@ omarchy-shell jessie.switchboard settings '{"bindingsEnabled":false}'
 # Enable plugin shortcuts again
 omarchy-shell jessie.switchboard settings '{"bindingsEnabled":true}'
 ```
-
-### Install from source (development)
-
-Development additionally requires Node.js **22.12 or later**, npm, Lua (`lua`, `luac`), Bash, the Qt tools `qmllint` and `qmltestrunner`, and the Omarchy shell sources.
-
-```bash
-git clone https://github.com/JessieChan0730/omarchy-switchboard.git
-cd omarchy-switchboard
-npm ci
-./scripts/install.sh
-```
-
-The script runs all checks and deploys a local development build. A first source installation preserves your existing shortcuts. Use `./scripts/install.sh --bindings` to enable the plugin shortcuts or `./scripts/install.sh --no-bindings` to restore your original shortcuts. Repeated deployments retain settings and binding mode.
-
-The installer backs up configuration and any existing plugin with the same ID, removes legacy managed Lua includes, reloads Hyprland and the plugin, and verifies the running instance's build ID and readiness. Failed deployments roll back. The installer refuses to overwrite a Git installation, preserving its checkout and official update support.
-
-### Migrate an existing source installation to Git
-
-Run in the source repository:
-
-```bash
-./scripts/migrate.sh
-```
-
-The script backs up and uninstalls the managed development installation, installs the Git repository with the official command, and restores settings and binding mode. Failure rolls back the migration. It defaults to the GitHub URL above; use `--url <Git URL>` for another release repository. If the first development installation replaced an earlier plugin with the same ID, resolve that original installation before migrating.
 
 ## Updating
 
