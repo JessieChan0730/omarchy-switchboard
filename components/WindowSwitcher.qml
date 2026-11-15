@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Shapes
 import Quickshell
 import qs.Commons as Commons
 
@@ -170,27 +171,46 @@ Item {
         anchors { top: strip.bottom; topMargin: 16; left: parent.left; right: parent.right }
         height: 240
         visible: switcher.windowsExpanded
-        Rectangle {
-            id: pointer
-            readonly property var selectedItem: apps.itemAtIndex(switcher.selectedIndex)
-            x: Math.max(20, Math.min(bubble.width - 36,
-                strip.x + 16 + (selectedItem ? selectedItem.x - apps.contentX + selectedItem.width / 2 : apps.width / 2) - 8))
-            y: -8
-            width: 16; height: 16
-            rotation: 45
-            color: theme.backgroundColor
-            border { width: 1; color: theme.borderColor }
-        }
-        Rectangle {
+        Shape {
+            id: outline
             anchors.fill: parent
-            color: theme.backgroundColor
-            radius: theme.cornerRadius + 6
-            border { width: 1; color: theme.borderColor }
-        }
-        Rectangle {
-            x: pointer.x - 2; y: 1
-            width: 20; height: 10
-            color: theme.backgroundColor
+            preferredRendererType: Shape.CurveRenderer
+            readonly property real corner: Math.max(0, Math.min(theme.cornerRadius + 6, width / 2 - 0.5, height / 2 - 0.5))
+            readonly property real tipSize: 8 * Math.SQRT2
+            readonly property var selectedItem: apps.itemAtIndex(switcher.selectedIndex)
+            readonly property real tipX: Math.max(corner + tipSize + 0.5, Math.min(width - corner - tipSize - 0.5,
+                strip.x + 16 + (selectedItem ? selectedItem.x - apps.contentX + selectedItem.width / 2 : apps.width / 2)))
+            // One filled outline keeps the pointer join seamless, including with translucent themes.
+            ShapePath {
+                strokeWidth: 1
+                strokeColor: theme.borderColor
+                fillColor: theme.backgroundColor
+                startX: outline.corner + 0.5
+                startY: 0.5
+                PathLine { x: outline.tipX - outline.tipSize; y: 0.5 }
+                PathLine { x: outline.tipX; y: 0.5 - outline.tipSize }
+                PathLine { x: outline.tipX + outline.tipSize; y: 0.5 }
+                PathLine { x: outline.width - outline.corner - 0.5; y: 0.5 }
+                PathArc {
+                    x: outline.width - 0.5; y: outline.corner + 0.5
+                    radiusX: outline.corner; radiusY: outline.corner
+                }
+                PathLine { x: outline.width - 0.5; y: outline.height - outline.corner - 0.5 }
+                PathArc {
+                    x: outline.width - outline.corner - 0.5; y: outline.height - 0.5
+                    radiusX: outline.corner; radiusY: outline.corner
+                }
+                PathLine { x: outline.corner + 0.5; y: outline.height - 0.5 }
+                PathArc {
+                    x: 0.5; y: outline.height - outline.corner - 0.5
+                    radiusX: outline.corner; radiusY: outline.corner
+                }
+                PathLine { x: 0.5; y: outline.corner + 0.5 }
+                PathArc {
+                    x: outline.corner + 0.5; y: 0.5
+                    radiusX: outline.corner; radiusY: outline.corner
+                }
+            }
         }
         ListView {
             id: windows
