@@ -64,6 +64,11 @@ Item {
         // qmllint disable missing-property
         candidates = errorKey ? [] : mode === "window" ? Logic.applicationCandidates(snapshot, history) : Logic.workspaceCandidates(snapshot, history)
         // qmllint enable missing-property
+        // An empty application scope has no target; leave the surface and input alone.
+        if (mode === "window" && !errorKey && candidates.length === 0) {
+            dismiss()
+            return
+        }
         desktopAdapter.suppressHistory = true
         session.begin(next, {sourceMonitorKey: sourceMonitor, originWindowKey: snapshot.currentWindowKey, originWorkspaceKey: snapshot.currentWorkspaceKey})
         opened = true
