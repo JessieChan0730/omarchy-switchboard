@@ -16,6 +16,7 @@ Item {
     property var shell: null
     property var manifest: null
     property bool opened: false
+    readonly property bool panelVisible: opened && !panelRevealDelay.running
     property string mode: "window"
     property var snapshot: ({windows: [], workspaces: [], monitors: []})
     property var candidates: []
@@ -42,6 +43,7 @@ Item {
         const nextMode = next.mode === "app-windows" ? "window" : next.mode
         if (opened && mode === nextMode) {
             request = next
+            if (next.mode !== "window" || !next.holdToConfirm) panelRevealDelay.stop()
             if (next.mode === "app-windows") expandWindows(next.direction)
             else step(next.direction)
             return
@@ -71,6 +73,8 @@ Item {
         }
         desktopAdapter.suppressHistory = true
         session.begin(next, {sourceMonitorKey: sourceMonitor, originWindowKey: snapshot.currentWindowKey, originWorkspaceKey: snapshot.currentWorkspaceKey})
+        if (next.mode === "window" && next.holdToConfirm && !errorKey) panelRevealDelay.restart()
+        else panelRevealDelay.stop()
         opened = true
         session.ready(candidates.map(function(c) { return c.key }), currentKey, false)
         if (next.mode === "app-windows") {
@@ -87,6 +91,7 @@ Item {
     }
     function close(): void {
         opened = false
+        panelRevealDelay.stop()
         modifierTimer.stop()
         session.cancel()
         windowSession.cancel()
@@ -223,7 +228,7 @@ Item {
 
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
     Components.Theme { id: theme }
-    Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.opened && (root.mode === "workspace" || root.windowsExpanded) }
+    Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.panelVisible && (root.mode === "workspace" || root.windowsExpanded) }
     Controllers.ConfigController { id: config; shell: root.shell; pluginId: root.pluginId; onInvalidConfig: root.dismiss() }
     Adapters.HyprlandAdapter {
         id: desktopAdapter
@@ -253,6 +258,9 @@ Item {
             if (target) activation.activate(target)
         }
     }
+    // Delay only the picture. The transparent surface already owns input, so
+    // immediate Tab/Escape and Alt release still reach the current session.
+    Timer { id: panelRevealDelay; interval: 100 }
     Timer { id: modifierTimer; interval: 45; repeat: true; running: root.opened && root.request.holdToConfirm; onTriggered: root.queryModifiers() }
     Timer {
         interval: 200
@@ -291,7 +299,7 @@ Item {
 
     Commons.ShellIpc {
         target: root.pluginId
-        function status(): string { return JSON.stringify({ready: desktopAdapter.available && config.supported, buildId: root.manifest ? root.manifest.developmentBuildId || "" : "", opened: root.opened, mode: root.mode, candidates: root.candidates.length, selectedIndex: session.selectedIndex, phase: session.phase, busy: activation.busy || root.pendingActivation !== null, bindings: root.bindingReady, sourceMonitor: root.sourceMonitor, sourceWorkspace: root.sourceWorkspace, windowsExpanded: root.windowsExpanded, windows: root.applicationWindows.length, selectedWindowIndex: windowSession.selectedIndex}) }
+        function status(): string { return JSON.stringify({ready: desktopAdapter.available && config.supported, buildId: root.manifest ? root.manifest.developmentBuildId || "" : "", opened: root.opened, panelVisible: root.panelVisible, mode: root.mode, candidates: root.candidates.length, selectedIndex: session.selectedIndex, phase: session.phase, busy: activation.busy || root.pendingActivation !== null, bindings: root.bindingReady, sourceMonitor: root.sourceMonitor, sourceWorkspace: root.sourceWorkspace, windowsExpanded: root.windowsExpanded, windows: root.applicationWindows.length, selectedWindowIndex: windowSession.selectedIndex}) }
         function step(direction: int): void { root.step(direction < 0 ? -1 : 1) }
         function expand(direction: int): void { root.expandWindows(direction < 0 ? -1 : 1) }
         function confirm(): void { root.confirm() }
@@ -311,6 +319,7 @@ Item {
             enabled: root.opened
         }
         Rectangle {
+            opacity: root.panelVisible ? 1 : 0
             x: (parent.width - width) / 2
             y: root.mode === "workspace" ? (parent.height - height) / 2
                 : Math.min((parent.height - windowView.stripHeight) / 2, parent.height - height - 32)
@@ -342,7 +351,7 @@ Item {
                 Components.WindowSwitcher {
                     id: windowView
                     anchors.fill: parent
-                    visible: root.mode === "window"
+                    visible: root.panelVisible && root.mode === "window"
                     candidates: root.mode === "window" ? root.candidates : []
                     selectedIndex: session.selectedIndex
                     windowCandidates: root.applicationWindows
@@ -379,6 +388,7 @@ Item {
     }
     Component.onDestruction: {
         activateTimer.stop()
+        panelRevealDelay.stop()
         modifierTimer.stop()
         activation.cancel()
         // qmllint disable missing-property
