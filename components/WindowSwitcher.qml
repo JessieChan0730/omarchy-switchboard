@@ -15,13 +15,16 @@ Item {
     property bool windowsExpanded: false
     property var applicationKeys: []
     property var windowKeys: []
-    readonly property int stripHeight: 144
+    readonly property int stripHeight: 168
     readonly property real preferredWidth: Math.max(240, candidates.length * 104 + 32,
         windowsExpanded ? Math.min(3, windowCandidates.length) * 288 + 32 : 0)
     readonly property real preferredHeight: stripHeight + (windowsExpanded ? 256 : 0)
     readonly property var selectedApp: candidates[selectedIndex] || null
     readonly property var selectedEntry: selectedApp && selectedApp.appId ? DesktopEntries.heuristicLookup(selectedApp.appId) : null
     readonly property string selectedName: selectedEntry ? selectedEntry.name : selectedApp ? selectedApp.appId || selectedApp.windows[0].title : ""
+    readonly property var targetWindow: windowsExpanded ? windowCandidates[selectedWindowIndex] || null
+        : selectedApp ? selectedApp.windows[0] || null : null
+    readonly property string targetTitle: targetWindow ? (targetWindow.title || "").replace(/[\r\n\t]+/g, " ").trim() : ""
     readonly property real applicationContentX: apps.contentX - apps.originX
     readonly property real windowContentX: windows.contentX - windows.originX
     signal candidateClicked(int index)
@@ -123,13 +126,29 @@ Item {
                 }
             }
         }
-        PlainText {
+        Column {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12 }
-            text: switcher.candidates.length ? switcher.selectedName : switcher.emptyText
-            color: theme.foregroundColor
-            font { family: theme.fontFamily; pixelSize: theme.bodySize }
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
+            spacing: 4
+            PlainText {
+                width: parent.width
+                text: switcher.candidates.length ? switcher.selectedName : switcher.emptyText
+                color: theme.foregroundColor
+                font { family: theme.fontFamily; pixelSize: theme.bodySize }
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+            }
+            PlainText {
+                objectName: "targetWindowTitle"
+                width: parent.width
+                visible: text.length > 0
+                text: switcher.targetTitle
+                color: theme.foregroundColor
+                opacity: 0.65
+                font { family: theme.fontFamily; pixelSize: Math.max(10, theme.bodySize - 2) }
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                maximumLineCount: 1
+            }
         }
         Rectangle {
             anchors { bottom: parent.bottom; bottomMargin: 3; horizontalCenter: parent.horizontalCenter }
