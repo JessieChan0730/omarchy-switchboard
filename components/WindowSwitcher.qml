@@ -73,7 +73,7 @@ Item {
                 required property int index
                 readonly property var app: switcher.displayedApps.find(function(app) { return app.key === application.modelData }) || null
                 readonly property bool selected: switcher.applicationOnly || index === switcher.selectedIndex
-                width: 104
+                width: switcher.displayedApps.length === 1 ? apps.width : 104
                 height: 96
                 Rectangle {
                     anchors.centerIn: parent
@@ -158,7 +158,7 @@ Item {
             id: pointer
             readonly property var selectedItem: apps.itemAtIndex(switcher.applicationOnly ? 0 : switcher.selectedIndex)
             x: Math.max(20, Math.min(bubble.width - 36,
-                strip.x + 16 + (selectedItem ? selectedItem.x - apps.contentX + 52 : apps.width / 2) - 8))
+                strip.x + 16 + (selectedItem ? selectedItem.x - apps.contentX + selectedItem.width / 2 : apps.width / 2) - 8))
             y: -8
             width: 16; height: 16
             rotation: 45
