@@ -3,6 +3,7 @@ node_modules/
 /dist/
 .cache/
 test-results/
+/local-docs/
 .stage-*/
 *.tsbuildinfo
 __pycache__/
