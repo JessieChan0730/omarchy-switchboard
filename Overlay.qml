@@ -32,8 +32,8 @@ Item {
     property string currentKey: ""
     property string errorKey: ""
     readonly property string pluginId: manifest ? manifest.id : "jessie.switchboard"
-    readonly property string leaseToken: String(Date.now()) + "-" + String(Math.random())
-    readonly property bool bindingReady: config.supported && config.settings.bindingsEnabled && desktopAdapter.available
+    readonly property bool bindingRequested: config.supported && config.settings.bindingsEnabled && desktopAdapter.available
+    readonly property bool bindingReady: bindings.active
 
     function open(payloadJson: string): void {
         if (activation.busy || pendingActivation) { pendingOpenRequest = payloadJson; return }
@@ -214,22 +214,17 @@ Item {
         modifierProc.command = ["hyprctl", "repl", "print(hl.is_key_down(\"" + keys[0] + "\") or hl.is_key_down(\"" + keys[1] + "\"))"]
         modifierProc.running = true
     }
-    function renewLease(): void {
-        if (leaseProc.running) return
-        // qmllint disable missing-property
-        const quote = Logic.luaString
-        leaseProc.command = ["hyprctl", "eval", bindingReady
-            ? "_G.switchboard_lease={token=" + quote(leaseToken) + ",expires=os.time()+6}"
-            : "if _G.switchboard_lease and _G.switchboard_lease.token==" + quote(leaseToken) + " then _G.switchboard_lease=nil end"]
-        // qmllint enable missing-property
-        leaseProc.running = true
-    }
-    onBindingReadyChanged: renewLease()
-
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
     Components.Theme { id: theme }
     Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.panelVisible && (root.mode === "workspace" || root.windowsExpanded) }
-    Controllers.ConfigController { id: config; shell: root.shell; pluginId: root.pluginId; onInvalidConfig: root.dismiss() }
+    Controllers.ConfigController {
+        id: config
+        shell: root.shell
+        pluginId: root.pluginId
+        defaultBindingsEnabled: root.manifest ? root.manifest.defaultBindingsEnabled === true : false
+        onInvalidConfig: root.dismiss()
+    }
+    Controllers.BindingsController { id: bindings; requested: root.bindingRequested; pluginId: root.pluginId }
     Adapters.HyprlandAdapter {
         id: desktopAdapter
         onDesktopChanged: {
@@ -287,9 +282,6 @@ Item {
             }
         }
     }
-    Timer { interval: 2000; repeat: true; running: root.bindingReady; onTriggered: root.renewLease() }
-    Process { id: leaseProc }
-
     GlobalShortcut { appid: root.pluginId; name: "window-forward"; onPressed: root.open('{"mode":"window","direction":1,"holdToConfirm":true,"globalInput":true}') }
     GlobalShortcut { appid: root.pluginId; name: "window-backward"; onPressed: root.open('{"mode":"window","direction":-1,"holdToConfirm":true,"globalInput":true}') }
     GlobalShortcut { appid: root.pluginId; name: "app-windows-forward"; onPressed: root.open('{"mode":"app-windows","direction":1,"holdToConfirm":true,"globalInput":true}') }
@@ -299,7 +291,7 @@ Item {
 
     Commons.ShellIpc {
         target: root.pluginId
-        function status(): string { return JSON.stringify({ready: desktopAdapter.available && config.supported, buildId: root.manifest ? root.manifest.developmentBuildId || "" : "", opened: root.opened, panelVisible: root.panelVisible, mode: root.mode, candidates: root.candidates.length, selectedIndex: session.selectedIndex, phase: session.phase, busy: activation.busy || root.pendingActivation !== null, bindings: root.bindingReady, sourceMonitor: root.sourceMonitor, sourceWorkspace: root.sourceWorkspace, windowsExpanded: root.windowsExpanded, windows: root.applicationWindows.length, selectedWindowIndex: windowSession.selectedIndex}) }
+        function status(): string { return JSON.stringify({ready: desktopAdapter.available && config.supported && (!root.bindingRequested || root.bindingReady), buildId: root.manifest ? root.manifest.buildId || root.manifest.developmentBuildId || "" : "", opened: root.opened, panelVisible: root.panelVisible, mode: root.mode, candidates: root.candidates.length, selectedIndex: session.selectedIndex, phase: session.phase, busy: activation.busy || root.pendingActivation !== null, bindings: root.bindingReady, sourceMonitor: root.sourceMonitor, sourceWorkspace: root.sourceWorkspace, windowsExpanded: root.windowsExpanded, windows: root.applicationWindows.length, selectedWindowIndex: windowSession.selectedIndex}) }
         function step(direction: int): void { root.step(direction < 0 ? -1 : 1) }
         function expand(direction: int): void { root.expandWindows(direction < 0 ? -1 : 1) }
         function confirm(): void { root.confirm() }
@@ -391,8 +383,5 @@ Item {
         panelRevealDelay.stop()
         modifierTimer.stop()
         activation.cancel()
-        // qmllint disable missing-property
-        Quickshell.execDetached(["hyprctl", "eval", "if _G.switchboard_lease and _G.switchboard_lease.token==" + Logic.luaString(leaseToken) + " then _G.switchboard_lease=nil end"])
-        // qmllint enable missing-property
     }
 }

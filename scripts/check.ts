@@ -88,7 +88,7 @@ try {
     if (mode === "all" || mode === "manifest") run("omarchy", ["plugin", "validate", dist]);
     if (mode === "all") {
       run("luac", ["-p", "bindings.lua"]);
-      run("bash", ["-n", "scripts/install.sh", "scripts/uninstall.sh"]);
+      run("bash", ["-n", "scripts/install.sh", "scripts/uninstall.sh", "scripts/migrate.sh"]);
       run("python3", ["-m", "unittest", "discover", "-s", "tests/installer"]);
       run("python3", ["-m", "unittest", "discover", "-s", "tests/previews"]);
     }

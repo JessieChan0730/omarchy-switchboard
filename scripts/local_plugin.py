@@ -87,7 +87,8 @@ class Installer:
 
     @staticmethod
     def run(args: list[str]) -> str:
-        result = subprocess.run(args, check=True, text=True, capture_output=True, timeout=8)
+        timeout = 120 if args[:3] == ["omarchy", "plugin", "add"] else 8
+        result = subprocess.run(args, check=True, text=True, capture_output=True, timeout=timeout)
         return result.stdout.strip()
 
     def validate_desktop(self, strict_shell: bool = True) -> None:
@@ -127,6 +128,9 @@ class Installer:
             pass
 
     def install(self, binding_mode: bool | None) -> None:
+        if (self.plugin / ".git").exists():
+            raise RuntimeError("This plugin is Git-managed. Use omarchy plugin update jessie.switchboard; "
+                               "remove the Git installation before deploying a local development build.")
         artifact = ROOT / "dist/plugin"
         if not (artifact / "manifest.json").exists():
             raise RuntimeError("Build dist/plugin before installing")
@@ -154,11 +158,12 @@ class Installer:
             build_id = uuid.uuid4().hex
             runtime = stage / "runtime" / build_id
             runtime.mkdir(parents=True)
-            for name in ["Overlay.qml", "controllers", "adapters", "components", "previews", "generated", "i18n"]:
+            for name in ["Overlay.qml", "bindings.lua", "controllers", "adapters", "components", "previews", "generated", "i18n"]:
                 shutil.move(str(stage / name), runtime / name)
             manifest = json.loads((stage / "manifest.json").read_text())
             manifest["entryPoints"]["overlay"] = "runtime/" + build_id + "/Overlay.qml"
             manifest["developmentBuildId"] = build_id
+            manifest["buildId"] = build_id
             atomic_write(stage / "manifest.json", json.dumps(manifest, indent=2) + "\n")
             self.runner(["omarchy", "plugin", "validate", str(stage)])
             atomic_write(stage / ".switchboard-owned", PLUGIN_ID + "\n")
@@ -167,8 +172,8 @@ class Installer:
             os.replace(stage, self.plugin)
             atomic_write(self.shell_config, json.dumps(replace_entry(config, entry), ensure_ascii=False, indent=2) + "\n")
             new_bindings = clean_bindings
-            if mode:
-                new_bindings += ("" if not new_bindings or new_bindings.endswith("\n") else "\n") + managed_include(self.plugin / "bindings.lua")
+            # Binding mode remains in shell.json. Remove the legacy include;
+            # the overlay now owns the runtime bindings.
             if new_bindings != old_bindings:
                 atomic_write(self.bindings, new_bindings)
             atomic_write(self.metadata, json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
@@ -199,6 +204,8 @@ class Installer:
             print("No managed Switchboard installation found.")
             return
         metadata = json.loads(self.metadata.read_text())
+        if (self.plugin / ".git").exists():
+            raise RuntimeError("This plugin is Git-managed. Use omarchy plugin remove jessie.switchboard.")
         if self.plugin.exists() and not (self.plugin / ".switchboard-owned").exists():
             raise RuntimeError("Plugin directory no longer belongs to this installation; leaving it intact")
         config = read_config(self.shell_config)
@@ -242,10 +249,49 @@ class Installer:
         print("Uninstalled Switchboard; previous plugin entry and bindings restored.")
         print("Backups retained: " + str(self.state_dir))
 
+    def migrate(self, url: str) -> None:
+        if (self.plugin / ".git").exists():
+            print("Already Git-managed; use omarchy plugin update jessie.switchboard.")
+            return
+        if not self.metadata.exists() or not (self.plugin / ".switchboard-owned").exists():
+            raise RuntimeError("Migration requires an installer-managed Switchboard installation.")
+        metadata = json.loads(self.metadata.read_text())
+        if metadata.get("originalPlugin"):
+            raise RuntimeError("An earlier plugin with this ID must be restored by uninstall; "
+                               "resolve that installation before migrating to Git.")
+        config = read_config(self.shell_config)
+        previous = next((e for e in config.get("plugins", []) if isinstance(e, dict) and e.get("id") == PLUGIN_ID), None)
+        backup = self.backup()
+        try:
+            self.uninstall()
+            # Add disabled first, then restore settings before the first load.
+            self.runner(["omarchy", "plugin", "add", url, "--yes"])
+            current = read_config(self.shell_config)
+            entry = dict(previous or {"id": PLUGIN_ID, "enabled": True, "bindingsEnabled": False})
+            atomic_write(self.shell_config, json.dumps(replace_entry(current, entry), ensure_ascii=False, indent=2) + "\n")
+            self.runner(["omarchy-shell", "shell", "rescanPlugins"])
+            if entry.get("enabled", True):
+                expected = json.loads((self.plugin / "manifest.json").read_text()).get("buildId")
+                for _ in range(40):
+                    try:
+                        status = json.loads(self.runner(["omarchy-shell", PLUGIN_ID, "status"]))
+                        if status.get("ready") and status.get("buildId") == expected:
+                            break
+                    except (subprocess.SubprocessError, ValueError):
+                        pass
+                    time.sleep(0.15)
+                else:
+                    raise RuntimeError("Git installation did not become ready; migration rolled back")
+        except Exception:
+            self.rollback(backup)
+            raise
+        print("Migrated to Git management; settings and binding mode retained.")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["install", "uninstall"])
+    parser.add_argument("action", choices=["install", "uninstall", "migrate"])
+    parser.add_argument("--url", default="https://github.com/JessieChan0730/omarchy-switchboard.git")
     flags = parser.add_mutually_exclusive_group()
     flags.add_argument("--bindings", dest="bindings", action="store_true", default=None)
     flags.add_argument("--no-bindings", dest="bindings", action="store_false")
@@ -253,7 +299,8 @@ def main() -> None:
     try:
         installer = Installer()
         if args.action == "install": installer.install(args.bindings)
-        else: installer.uninstall()
+        elif args.action == "uninstall": installer.uninstall()
+        else: installer.migrate(args.url)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         parser.exit(1, "Switchboard: " + str(error) + "\n")
 

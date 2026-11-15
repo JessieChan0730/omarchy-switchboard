@@ -1,0 +1,20 @@
+name: Release integrity
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check:release
+      - run: sudo apt-get update && sudo apt-get install -y lua5.4
+      - run: python3 -m unittest discover -s tests/installer
+      - run: luac -p bindings.lua && bash -n scripts/install.sh scripts/uninstall.sh scripts/migrate.sh

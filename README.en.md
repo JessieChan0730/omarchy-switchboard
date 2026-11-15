@@ -23,7 +23,7 @@ This is a development preview. Ordinary named workspaces such as `a` or `coding`
 
 ## Keyboard Shortcuts
 
-Enable these shortcuts with `./scripts/install.sh --bindings`. `Win` is Hyprland's `Super` key. The backtick is the `` ` / ~ `` key on your keyboard.
+Git installation enables these shortcuts by default. For a source development installation, use `./scripts/install.sh --bindings`. `Win` is Hyprland's `Super` key. The backtick is the `` ` / ~ `` key on your keyboard.
 
 | Shortcut | Action |
 | --- | --- |
@@ -50,38 +50,22 @@ Enabling bindings takes over the six combinations above. `` Win+` `` and `` Win+
 
 ## Installation
 
-### Requirements
+### Install through Omarchy (recommended)
 
-To install from source, you need:
-
-- A running Omarchy / Hyprland Lua session, with matching Quickshell, Qt 6, and Omarchy shell sources.
-- Git, Node.js **22.12 or later**, npm, Python 3, Lua (`lua`, `luac`), and Bash.
-- The Qt tools `qmllint` and `qmltestrunner`, plus the `omarchy`, `omarchy-shell`, and `hyprctl` commands.
-- ImageMagick for wallpaper thumbnails, installed by default in Omarchy.
-
-Node.js and npm are used only for building and checking. At runtime, the plugin uses QML, precompiled JavaScript ESM, and Lua. Python 3 and ImageMagick generate the wallpaper cache in a separate process.
-
-### Install from Source
+Use a running Omarchy / Hyprland Lua session with matching Quickshell and Qt 6. Runtime dependencies are Git, Python 3, and ImageMagick, included in Omarchy. **Node.js, npm, and compilation on the user's machine are not required.**
 
 ```bash
-git clone https://github.com/JessieChan0730/omarchy-switchboard.git
-cd omarchy-switchboard
-npm ci
-./scripts/install.sh
+omarchy plugin add https://github.com/JessieChan0730/omarchy-switchboard.git --enable
 ```
 
-The script runs the full checks, then deploys and enables the plugin at `~/.config/omarchy/plugins/jessie.switchboard/`. The first installation preserves your existing shortcuts by default. To use the shortcuts above, run:
+The plugin is installed at `~/.config/omarchy/plugins/jessie.switchboard/`. A marketplace listing is optional for installation through a Git URL. A new Git installation enables the six shortcuts above; an existing `bindingsEnabled` setting takes precedence.
+
+Shortcuts are registered at runtime, without a permanent include in `~/.config/hypr/bindings.lua`, and registered again after Hyprland reloads. Disabling, removing, or turning off shortcuts triggers one Hyprland configuration reload to restore bindings from the user's current configuration files. After an abnormal exit, the lease expires and restores the configuration within approximately 8–9 seconds. Other plugins that register temporary bindings must support registration after configuration reloads.
+
+### Check and try the plugin
 
 ```bash
-./scripts/install.sh --bindings
-```
-
-The installer backs up your configuration and any existing plugin with the same ID, reloads Hyprland and the plugin, and verifies the running instance's `buildId` and readiness. A failed deployment rolls back its changes.
-
-### Check and Try the Plugin
-
-```bash
-# Check readiness, build ID, and binding mode
+# Check readiness, build ID, and actual shortcut state
 omarchy-shell jessie.switchboard status
 
 # Application list
@@ -94,11 +78,59 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"app-windows"}'
 omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
 ```
 
-Use Tab / arrow keys to select, Enter to confirm, and Esc to cancel. Add `"direction":-1` for an initial reverse selection, for example `'{"mode":"workspace","direction":-1}'`. Opening a panel advances the selection once in the requested direction.
+`ready` should be `true`; with shortcuts enabled, `bindings` should also be `true`. Use Tab / arrow keys to select, Enter to confirm, and Esc to cancel. Add `"direction":-1` for an initial reverse selection, for example `'{"mode":"workspace","direction":-1}'`. Opening a panel advances the selection once in the requested direction.
+
+To keep your existing shortcuts and use commands only, run while the plugin is enabled:
+
+```bash
+omarchy-shell jessie.switchboard settings '{"bindingsEnabled":false}'
+
+# Enable plugin shortcuts again
+omarchy-shell jessie.switchboard settings '{"bindingsEnabled":true}'
+```
+
+### Install from source (development)
+
+Development additionally requires Node.js **22.12 or later**, npm, Lua (`lua`, `luac`), Bash, the Qt tools `qmllint` and `qmltestrunner`, and the Omarchy shell sources.
+
+```bash
+git clone https://github.com/JessieChan0730/omarchy-switchboard.git
+cd omarchy-switchboard
+npm ci
+./scripts/install.sh
+```
+
+The script runs all checks and deploys a local development build. A first source installation preserves your existing shortcuts. Use `./scripts/install.sh --bindings` to enable the plugin shortcuts or `./scripts/install.sh --no-bindings` to restore your original shortcuts. Repeated deployments retain settings and binding mode.
+
+The installer backs up configuration and any existing plugin with the same ID, removes legacy managed Lua includes, reloads Hyprland and the plugin, and verifies the running instance's build ID and readiness. Failed deployments roll back. The installer refuses to overwrite a Git installation, preserving its checkout and official update support.
+
+### Migrate an existing source installation to Git
+
+Run in the source repository:
+
+```bash
+./scripts/migrate.sh
+```
+
+The script backs up and uninstalls the managed development installation, installs the Git repository with the official command, and restores settings and binding mode. Failure rolls back the migration. It defaults to the GitHub URL above; use `--url <Git URL>` for another release repository. If the first development installation replaced an earlier plugin with the same ID, resolve that original installation before migrating.
 
 ## Updating
 
-Run these commands in your existing checkout:
+For a Git installation:
+
+```bash
+omarchy plugin update jessie.switchboard
+```
+
+Each release uses a separate `runtime/<buildId>/` directory. The manifest points at the complete new runtime, avoiding stale QML / JavaScript caches. Updating rescans plugins. To force a fresh shell process when needed:
+
+```bash
+omarchy restart shell
+```
+
+Restarting the shell does not download updates. Edits inside a Git installation may prevent fast-forward updates; use the source repository for development.
+
+For a source development installation, run in the checkout:
 
 ```bash
 git pull --ff-only
@@ -106,27 +138,22 @@ npm ci
 ./scripts/install.sh
 ```
 
-Reinstalling updates the plugin while preserving your previous binding mode and settings. Each deployment uses a separate `runtime/<buildId>/` path and reports success only after verifying the new instance.
+## Disabling and removing
 
-To change the binding mode, use `./scripts/install.sh --bindings` to enable shortcuts, or run the following to restore the original bindings while keeping the plugin available through commands:
-
-```bash
-./scripts/install.sh --no-bindings
-```
-
-## Uninstallation
-
-Run from the repository root:
+Both installation types support disabling and enabling:
 
 ```bash
-./scripts/uninstall.sh
+omarchy plugin disable jessie.switchboard
+omarchy plugin enable jessie.switchboard
 ```
 
-Uninstallation removes this plugin's entry and the managed Lua include, preserving other plugins, settings, and shortcuts added afterward. If a plugin with the same ID existed before installation, its directory and original entry are restored while retaining settings fields modified afterward. Repeated uninstallation is safe.
+Remove a Git installation with:
 
-Backups and installation records remain at `${XDG_STATE_HOME:-~/.local/state}/omarchy-switchboard/` for manual inspection.
+```bash
+omarchy plugin remove jessie.switchboard
+```
 
-To disable the plugin temporarily, run `omarchy plugin disable jessie.switchboard`. With bindings enabled, Tab combinations fall back to direct cycling once the runtime lease is cleared or expires after the plugin becomes unavailable. Use `--no-bindings` or the uninstall script to restore the original bindings immediately.
+For a development installation, use `./scripts/uninstall.sh` to restore the original plugin entry and any earlier plugin with the same ID. It preserves other plugins, settings, and shortcuts added later. Repeated uninstallation is safe. Backups and installation records remain at `${XDG_STATE_HOME:-~/.local/state}/omarchy-switchboard/`.
 
 ## Development
 
@@ -150,10 +177,25 @@ npm run dev
 | `npm run dev` | Watch sources and rebuild |
 | `npm run lint:qml` | Check QML and Omarchy / Quickshell imports |
 | `npm run test:qt` | Test release ESM and actual component layouts in Qt |
-| `npm run validate` | Validate the Omarchy manifest |
+| `npm run validate` | Validate the built Omarchy manifest |
+| `npm run release` | Run all checks and prepare the Git runtime and root manifest |
+| `npm run check:release` | Rebuild and verify that release files match the sources |
 | `npm run check` | Run the full build, QML / Qt / manifest checks, Lua / Bash syntax checks, and installer and wallpaper cache tests |
 
 Set `QT_BIN_DIR` to choose a Qt tools directory or `OMARCHY_SHELL_DIR` to choose an Omarchy shell source directory. QML tooling metadata adjustments are written to the repository's `.cache/`.
+
+### Prepare a Git release
+
+After editing sources and `manifest.source.json`, run:
+
+```bash
+npm run release
+npm run check:release
+```
+
+`manifest.source.json` is the source manifest. The generated root `manifest.json` and `runtime/` must be committed with the sources on the public repository's default branch. The build ID is a content hash of runtime files and the source manifest, so identical inputs produce the same ID. Edit sources and regenerate rather than editing `runtime/` directly. The release script prepares local files; it does not commit, push, or submit a marketplace listing.
+
+GitHub Actions rebuilds and checks release integrity, verifies that required runtime files are not ignored by Git, then runs installer and Lua lifecycle tests. Full QML / Qt checks require an Omarchy environment and run locally through `npm run check`. See the [desktop integration guide](tests/integration/README.md) for verification with actual official commands.
 
 ## Acknowledgments
 

@@ -23,7 +23,7 @@ Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用�
 
 ## 快捷键简介
 
-以下快捷键需通过 `./scripts/install.sh --bindings` 启用。`Win` 对应 Hyprland 的 `Super`，反引号指键盘上的 `` ` / ~ `` 键。
+通过 Git 安装并启用插件后，以下快捷键默认生效。源码开发安装需使用 `./scripts/install.sh --bindings`。`Win` 对应 Hyprland 的 `Super`，反引号指键盘上的 `` ` / ~ `` 键。
 
 | 快捷键 | 功能 |
 | --- | --- |
@@ -50,38 +50,22 @@ Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用�
 
 ## 安装
 
-### 环境要求
+### 通过 Omarchy 安装（推荐）
 
-使用源码安装，需要：
-
-- 正在运行的 Omarchy / Hyprland Lua 会话，以及匹配的 Quickshell、Qt 6 和 Omarchy shell 源码。
-- Git、Node.js **22.12 或更高版本**、npm、Python 3、Lua（`lua`、`luac`）和 Bash。
-- Qt 工具 `qmllint`、`qmltestrunner`，以及 `omarchy`、`omarchy-shell`、`hyprctl` 命令。
-- ImageMagick，用于生成壁纸缩略图，Omarchy 默认安装。
-
-Node.js 与 npm 仅用于构建和检查，插件运行时使用 QML、预编译 JavaScript ESM 和 Lua。壁纸缓存由 Python 3 与 ImageMagick 在独立进程中生成。
-
-### 从源码安装
+需要正在运行的 Omarchy / Hyprland Lua 会话，以及匹配的 Quickshell 和 Qt 6。运行时使用 Git、Python 3 和 ImageMagick，Omarchy 默认提供；**不需要 Node.js、npm 或现场编译**。
 
 ```bash
-git clone https://github.com/JessieChan0730/omarchy-switchboard.git
-cd omarchy-switchboard
-npm ci
-./scripts/install.sh
+omarchy plugin add https://github.com/JessieChan0730/omarchy-switchboard.git --enable
 ```
 
-脚本运行完整检查后，将插件部署并启用到 `~/.config/omarchy/plugins/jessie.switchboard/`。首次安装默认保留现有快捷键；需要使用上表快捷键时执行：
+插件安装到 `~/.config/omarchy/plugins/jessie.switchboard/`。无需上架插件市场即可通过 Git URL 安装。首次 Git 安装默认接管上表六个快捷键，已有的 `bindingsEnabled` 设置优先。
 
-```bash
-./scripts/install.sh --bindings
-```
-
-安装器会备份配置和已有同 ID 插件，重新加载 Hyprland 与插件，并核对运行实例的 `buildId` 和就绪状态；部署失败时回滚本次修改。
+快捷键仅在插件运行期间注册，不向 `~/.config/hypr/bindings.lua` 添加永久 include。Hyprland 配置重载后会重新注册。停用、移除或关闭快捷键时，会触发一次 Hyprland 配置重载，恢复用户当前配置文件中的绑定；异常退出后，租约到期约 8–9 秒内执行同样的恢复。其他插件的临时绑定需要支持配置重载后重新注册。
 
 ### 检查与试用
 
 ```bash
-# 查看就绪状态、构建 ID 与快捷键模式
+# 查看就绪状态、构建 ID 与快捷键状态
 omarchy-shell jessie.switchboard status
 
 # 应用列表
@@ -94,11 +78,59 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"app-windows"}'
 omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
 ```
 
-命令打开后，使用 Tab / 方向键选择、Enter 确认、Esc 取消。加入 `"direction":-1` 可反向初始选择，例如 `'{"mode":"workspace","direction":-1}'`；打开时会按指定方向移动一次选中项。
+`status` 中 `ready` 应为 `true`；启用快捷键时 `bindings` 也应为 `true`。命令打开后，使用 Tab / 方向键选择、Enter 确认、Esc 取消。加入 `"direction":-1` 可反向初始选择，例如 `'{"mode":"workspace","direction":-1}'`；打开时会按指定方向移动一次选中项。
+
+只使用命令调用、保留原快捷键时，在插件启用状态下执行：
+
+```bash
+omarchy-shell jessie.switchboard settings '{"bindingsEnabled":false}'
+
+# 再次启用插件快捷键
+omarchy-shell jessie.switchboard settings '{"bindingsEnabled":true}'
+```
+
+### 从源码安装（开发用途）
+
+额外需要 Node.js **22.12 或更高版本**、npm、Lua（`lua`、`luac`）、Bash，以及 Qt 工具 `qmllint`、`qmltestrunner` 和 Omarchy shell 源码。
+
+```bash
+git clone https://github.com/JessieChan0730/omarchy-switchboard.git
+cd omarchy-switchboard
+npm ci
+./scripts/install.sh
+```
+
+脚本运行完整检查后部署并启用本地开发构建。首次源码安装默认保留现有快捷键；需要使用上表快捷键时执行 `./scripts/install.sh --bindings`，恢复原快捷键时执行 `./scripts/install.sh --no-bindings`。重复部署保留当前快捷键模式和插件设置。
+
+安装器会备份配置和已有同 ID 插件，清理旧版本的受管理 Lua include，重新加载 Hyprland 与插件，并核对运行实例的 `buildId` 和就绪状态；失败时回滚。它会拒绝覆盖 Git 安装，避免破坏 `.git` 和官方更新能力。
+
+### 从旧源码安装迁移到 Git 安装
+
+在源码仓库执行：
+
+```bash
+./scripts/migrate.sh
+```
+
+迁移脚本先备份，再卸载受管理的开发安装，通过官方 `plugin add` 安装 Git 仓库，并恢复插件设置和快捷键模式；失败时回滚。默认使用上述 GitHub URL，也可通过 `--url <Git URL>` 指定发布仓库。如果首次开发安装曾覆盖另一个同 ID 插件，脚本会要求先处理该原安装，避免丢失它。
 
 ## 更新
 
-在已有仓库目录中执行：
+Git 安装使用：
+
+```bash
+omarchy plugin update jessie.switchboard
+```
+
+每个发布构建使用独立的 `runtime/<buildId>/` 路径，manifest 指向完整的新运行目录，避免 QML / JavaScript 继续使用旧缓存。更新命令会重新扫描插件；需要强制重新加载时执行：
+
+```bash
+omarchy restart shell
+```
+
+shell 重启本身不会下载新版本。修改 Git 安装目录可能影响快进更新，开发时应使用源码仓库。
+
+源码开发安装在仓库中执行：
 
 ```bash
 git pull --ff-only
@@ -106,27 +138,22 @@ npm ci
 ./scripts/install.sh
 ```
 
-重复安装会更新插件，并保留上次的快捷键模式和插件设置。每次部署使用独立的 `runtime/<buildId>/` 路径，核对新实例后才报告成功。
+## 禁用与卸载
 
-需要主动切换快捷键模式时，使用 `./scripts/install.sh --bindings` 启用，或使用以下命令恢复原始绑定并保留插件供命令调用：
-
-```bash
-./scripts/install.sh --no-bindings
-```
-
-## 卸载
-
-在仓库根目录执行：
+Git 安装和开发安装均可临时禁用、重新启用：
 
 ```bash
-./scripts/uninstall.sh
+omarchy plugin disable jessie.switchboard
+omarchy plugin enable jessie.switchboard
 ```
 
-卸载会移除本插件条目及受管理的 Lua include，保留其他插件、设置和后来添加的快捷键。如果安装前存在同 ID 插件，会恢复其目录和原条目，并保留后来修改的设置字段。重复卸载可安全执行。
+Git 安装通过官方命令卸载：
 
-备份与安装记录保存在 `${XDG_STATE_HOME:-~/.local/state}/omarchy-switchboard/`，卸载后保留，便于手动查阅。
+```bash
+omarchy plugin remove jessie.switchboard
+```
 
-如只需临时停用，可执行 `omarchy plugin disable jessie.switchboard`。启用绑定时，插件不可用后 Tab 组合会在运行状态租约清除或过期后退回直接循环切换；立即恢复原始绑定请使用 `--no-bindings` 或卸载脚本。
+源码开发安装使用 `./scripts/uninstall.sh`，以恢复安装前的插件条目及同 ID 插件备份。卸载会保留其他插件、设置和后来添加的快捷键；重复卸载可安全执行。备份与安装记录保存在 `${XDG_STATE_HOME:-~/.local/state}/omarchy-switchboard/`。
 
 ## 开发
 
@@ -150,10 +177,25 @@ npm run dev
 | `npm run dev` | 监听源码并重新构建 |
 | `npm run lint:qml` | 检查 QML 与 Omarchy / Quickshell 导入 |
 | `npm run test:qt` | 在 Qt 中测试发布 ESM 和真实组件布局 |
-| `npm run validate` | 校验 Omarchy manifest |
+| `npm run validate` | 校验构建产物的 Omarchy manifest |
+| `npm run release` | 完整检查后生成 Git 发布目录与根 manifest |
+| `npm run check:release` | 重新构建并核对发布文件与源码一致 |
 | `npm run check` | 完整构建、QML / Qt / manifest 检查、Lua / Bash 语法及安装器与壁纸缓存测试 |
 
 `QT_BIN_DIR` 可指定 Qt 工具目录，`OMARCHY_SHELL_DIR` 可指定 Omarchy shell 源码目录。QML 工具元数据的兼容处理写入仓库 `.cache/`。
+
+### 准备 Git 发布
+
+修改源码和 `manifest.source.json` 后执行：
+
+```bash
+npm run release
+npm run check:release
+```
+
+`manifest.source.json` 是源清单；根目录的 `manifest.json` 和 `runtime/` 由发布脚本生成，应随源码一起提交到公开仓库的默认分支。`buildId` 是运行文件和源清单的内容哈希，同一份源码生成相同 ID。不要直接编辑 `runtime/`。发布脚本仅准备本地文件，不提交或推送 Git，也不自动申请市场收录。
+
+GitHub Actions 会重新构建并检查发布文件是否过期，确认必需运行文件未被 Git 忽略，并执行安装器与 Lua 生命周期测试。完整 QML / Qt 检查需要 Omarchy 环境，通过本地 `npm run check` 执行。实际官方命令验收见[桌面集成说明](tests/integration/README.md)。
 
 ## 鸣谢
 

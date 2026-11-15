@@ -4,10 +4,14 @@
   "name": "Omarchy Switchboard",
   "version": "0.1.0",
   "author": "Jessie",
-  "description": "Window switcher and workspace overview development preview",
-  "kinds": ["overlay"],
+  "description": "Application, window and workspace switcher for Omarchy",
+  "kinds": [
+    "overlay"
+  ],
   "keepLoaded": true,
+  "defaultBindingsEnabled": true,
   "entryPoints": {
-    "overlay": "Overlay.qml"
-  }
+    "overlay": "runtime/af64c491c2384e4e92a105f0/Overlay.qml"
+  },
+  "buildId": "af64c491c2384e4e92a105f0"
 }

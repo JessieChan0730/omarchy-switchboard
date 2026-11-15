@@ -1,6 +1,6 @@
 node_modules/
-generated/
-dist/
+/generated/
+/dist/
 .cache/
 test-results/
 .stage-*/

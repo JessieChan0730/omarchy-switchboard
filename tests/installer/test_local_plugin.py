@@ -39,7 +39,7 @@ class InstallerTests(unittest.TestCase):
         original = self.installer.bindings.read_text()
         self.installer.install(True)
         self.installer.install(None)
-        self.assertEqual(self.installer.bindings.read_text().count(module.BEGIN), 1)
+        self.assertNotIn(module.BEGIN, self.installer.bindings.read_text())
         with self.installer.bindings.open("a") as stream:
             stream.write('-- user added after install\n')
         config = json.loads(self.installer.shell_config.read_text())
@@ -127,29 +127,64 @@ class InstallerTests(unittest.TestCase):
             'o.rebind("ALT + grave", "User app shortcut", function() end)\n'
         )
         module.atomic_write(self.installer.bindings, original)
-        baseline = self.root / "user-bindings.lua"
-        baseline.write_text(original)
-        harness = module.ROOT / "tests/fixtures/bindings_harness.lua"
-        def assert_bindings(mode):
-            subprocess.run(["lua", str(harness), str(self.installer.bindings), mode, str(baseline)], check=True)
-
         self.installer.install(True)
-        legacy_file = self.installer.plugin / "bindings.lua"
-        legacy = ('o.rebind("SUPER + grave", "Switchboard: legacy workspace toggle", function() end)\n'
-                  'o.rebind("ALT + grave", "Switchboard: legacy window toggle", function() end)\n')
-        legacy_file.write_text(legacy_file.read_text().replace("M.ready = true\n", legacy + "M.ready = true\n"))
-        assert_bindings("legacy")
-        managed_before = self.installer.bindings.read_text()
+        module.atomic_write(self.installer.bindings, original + module.managed_include(self.installer.plugin / "bindings.lua"))
 
         self.installer.install(None)
-        assert_bindings("plugin")
-        self.assertEqual(self.installer.bindings.read_text(), managed_before)
+        self.assertEqual(self.installer.bindings.read_text(), original)
         entry = next(entry for entry in json.loads(self.installer.shell_config.read_text())["plugins"]
                      if entry["id"] == module.PLUGIN_ID)
         self.assertTrue(entry["bindingsEnabled"])
         self.installer.uninstall()
         self.assertEqual(self.installer.bindings.read_text(), original)
-        assert_bindings("none")
+
+    def test_git_install_is_never_overwritten_or_uninstalled(self):
+        self.installer.install(False)
+        (self.installer.plugin / ".git").mkdir()
+        (self.installer.plugin / ".git" / "config").write_text("preserve checkout")
+        before = self.installer.shell_config.read_bytes()
+        for action in [lambda: self.installer.install(None), self.installer.uninstall]:
+            with self.assertRaisesRegex(RuntimeError, "Git-managed"):
+                action()
+        self.assertEqual(self.installer.shell_config.read_bytes(), before)
+        self.assertEqual((self.installer.plugin / ".git" / "config").read_text(), "preserve checkout")
+
+    def test_failed_git_migration_restores_development_installation(self):
+        self.installer.install(True)
+        before = self.installer.shell_config.read_bytes()
+        old_manifest = (self.installer.plugin / "manifest.json").read_bytes()
+        old_runner = self.installer.runner
+        def fail_add(args):
+            if args[:3] == ["omarchy", "plugin", "add"]:
+                raise subprocess.CalledProcessError(1, args)
+            return old_runner(args)
+        self.installer.runner = fail_add
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.installer.migrate("https://example.invalid/plugin.git")
+        self.assertEqual(self.installer.shell_config.read_bytes(), before)
+        self.assertEqual((self.installer.plugin / "manifest.json").read_bytes(), old_manifest)
+        self.assertTrue(self.installer.metadata.exists())
+
+    def test_git_migration_preserves_binding_mode_and_settings(self):
+        self.installer.install(False)
+        config = json.loads(self.installer.shell_config.read_text())
+        entry = next(e for e in config["plugins"] if e["id"] == module.PLUGIN_ID)
+        entry["debug"] = True
+        module.atomic_write(self.installer.shell_config, json.dumps(config))
+        old_runner = self.installer.runner
+        def add(args):
+            if args[:3] == ["omarchy", "plugin", "add"]:
+                self.installer.plugin.mkdir(parents=True)
+                (self.installer.plugin / ".git").mkdir()
+                (self.installer.plugin / "manifest.json").write_text(json.dumps({"buildId": "git", "developmentBuildId": "git"}))
+                return "ok"
+            return old_runner(args)
+        self.installer.runner = add
+        self.installer.migrate("file:///test/release")
+        after = json.loads(self.installer.shell_config.read_text())
+        self.assertEqual(next(e for e in after["plugins"] if e["id"] == module.PLUGIN_ID), entry)
+        self.assertTrue((self.installer.plugin / ".git").exists())
+        self.assertFalse(self.installer.metadata.exists())
 
     def test_malformed_include_and_invalid_json_are_preserved(self):
         module.atomic_write(self.installer.bindings, module.BEGIN + '\n')

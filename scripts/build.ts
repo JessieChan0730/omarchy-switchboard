@@ -6,7 +6,7 @@ import { build } from "esbuild";
 import { checkTypeScript, dist, root } from "./tools";
 
 const runtimeFiles = [
-  "Overlay.qml", "manifest.json", "bindings.lua", "README.md", "README.en.md", "LICENSE",
+  "Overlay.qml", "bindings.lua", "README.md", "README.en.md", "LICENSE",
   "controllers", "adapters", "previews", "components", "i18n", "docs",
 ];
 
@@ -15,7 +15,11 @@ export async function buildProject(): Promise<void> {
   const stage = await mkdtemp(join(root, ".stage-"));
   try {
     // Build into staging so failed builds leave the last complete plugin intact.
-    await Promise.all(runtimeFiles.map((file) => cp(join(root, file), join(stage, file), { recursive: true })));
+    await Promise.all(runtimeFiles.map((file) => cp(join(root, file), join(stage, file), {
+      recursive: true,
+      filter: (path) => !path.split(/[\\/]/).includes("__pycache__"),
+    })));
+    await cp(join(root, "manifest.source.json"), join(stage, "manifest.json"));
     await build({
       absWorkingDir: root,
       entryPoints: ["src/logic/index.ts"],
@@ -89,7 +93,7 @@ async function watchProject(): Promise<void> {
     timer = setTimeout(() => { void rebuild(); }, 150);
   }
 
-  const watchers: FSWatcher[] = [...runtimeFiles, "src", "scripts", "tsconfig.json", "tsconfig.tools.json"]
+  const watchers: FSWatcher[] = [...runtimeFiles, "manifest.source.json", "src", "scripts", "tsconfig.json", "tsconfig.tools.json"]
     .map((file) => watch(join(root, file), { recursive: true }, schedule));
   for (const watcher of watchers) watcher.on("error", (error) => {
     console.error(error.message);

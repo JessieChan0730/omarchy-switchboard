@@ -1,0 +1,13 @@
+{
+  "window.title": "窗口",
+  "window.empty": "当前范围内没有可切换的窗口",
+  "workspace.label": "工作区 %1",
+  "workspace.empty": "空工作区",
+  "workspace.none": "当前范围内没有包含窗口的工作区",
+  "workspace.count": { "other": "%1 个窗口" },
+  "workspace.current": "当前",
+  "workspace.previous": "上一个",
+  "workspace.visiting": "额外工作区 %1 · 顶部栏角标 %2",
+  "status.unavailable": "Hyprland 不可用或配置版本不兼容。",
+  "status.activationFailed": "无法激活目标，目标可能已经关闭。"
+}
