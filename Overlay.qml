@@ -26,7 +26,6 @@ Item {
     property string sourceWorkspace: ""
     property string originWindowKey: ""
     property bool windowsExpanded: false
-    property bool applicationOnly: false
     readonly property var selectedApplication: mode === "window" ? candidates[session.selectedIndex] || null : null
     readonly property var applicationWindows: selectedApplication ? selectedApplication.windows : []
     property string currentKey: ""
@@ -56,7 +55,6 @@ Item {
         request = next
         mode = nextMode
         windowsExpanded = false
-        applicationOnly = next.mode === "app-windows"
         errorKey = config.supported && desktopAdapter.available ? "" : "status.unavailable"
         const currentWindow = snapshot.windows.find(function(w) { return w.key === snapshot.currentWindowKey })
         // qmllint disable missing-property
@@ -70,7 +68,7 @@ Item {
         session.begin(next, {sourceMonitorKey: sourceMonitor, originWindowKey: snapshot.currentWindowKey, originWorkspaceKey: snapshot.currentWorkspaceKey})
         opened = true
         session.ready(candidates.map(function(c) { return c.key }), currentKey, false)
-        if (applicationOnly) {
+        if (next.mode === "app-windows") {
             const index = candidates.findIndex(function(c) { return c.key === root.currentKey })
             if (index < 0) { dismiss(); return }
             session.select(index)
@@ -88,7 +86,6 @@ Item {
         session.cancel()
         windowSession.cancel()
         windowsExpanded = false
-        applicationOnly = false
         candidates = []
         pendingOpenRequest = null
         if (!pendingActivation && !activation.busy) desktopAdapter.suppressHistory = false
@@ -141,7 +138,6 @@ Item {
     function step(direction: int): void {
         if (!opened) return
         windowsExpanded = false
-        applicationOnly = false
         windowSession.cancel()
         session.step(direction)
     }
@@ -347,7 +343,6 @@ Item {
                     windowCandidates: root.applicationWindows
                     selectedWindowIndex: windowSession.selectedIndex
                     windowsExpanded: root.windowsExpanded
-                    applicationOnly: root.applicationOnly
                     previewProvider: previews
                     emptyText: strings.t(root.errorKey || "window.empty")
                     foregroundColor: theme.foregroundColor

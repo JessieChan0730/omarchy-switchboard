@@ -13,12 +13,10 @@ Item {
     property int selectedIndex: -1
     property int selectedWindowIndex: -1
     property bool windowsExpanded: false
-    property bool applicationOnly: false
-    readonly property var displayedApps: applicationOnly && selectedIndex >= 0 ? [candidates[selectedIndex]] : candidates
     property var applicationKeys: []
     property var windowKeys: []
     readonly property int stripHeight: 144
-    readonly property real preferredWidth: Math.max(240, displayedApps.length * 104 + 32,
+    readonly property real preferredWidth: Math.max(240, candidates.length * 104 + 32,
         windowsExpanded ? Math.min(3, windowCandidates.length) * 288 + 32 : 0)
     readonly property real preferredHeight: stripHeight + (windowsExpanded ? 256 : 0)
     readonly property var selectedApp: candidates[selectedIndex] || null
@@ -31,14 +29,13 @@ Item {
     Theme { id: theme }
 
     function reveal(): void {
-        const index = applicationOnly ? 0 : selectedIndex
-        if (index >= 0) apps.positionViewAtIndex(index, ListView.Contain)
+        if (selectedIndex >= 0) apps.positionViewAtIndex(selectedIndex, ListView.Contain)
         if (selectedWindowIndex >= 0) windows.positionViewAtIndex(selectedWindowIndex, ListView.Contain)
     }
     onSelectedIndexChanged: Qt.callLater(reveal)
     onSelectedWindowIndexChanged: Qt.callLater(reveal)
-    onDisplayedAppsChanged: {
-        const keys = displayedApps.map(function(app) { return app.key })
+    onCandidatesChanged: {
+        const keys = candidates.map(function(app) { return app.key })
         if (JSON.stringify(keys) !== JSON.stringify(applicationKeys)) applicationKeys = keys
         Qt.callLater(reveal)
     }
@@ -52,7 +49,7 @@ Item {
     Rectangle {
         id: strip
         anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-        width: Math.min(switcher.width, Math.max(240, switcher.displayedApps.length * 104 + 32))
+        width: Math.min(switcher.width, Math.max(240, switcher.candidates.length * 104 + 32))
         height: switcher.stripHeight
         radius: theme.cornerRadius + 6
         color: theme.backgroundColor
@@ -71,9 +68,9 @@ Item {
                 id: application
                 required property string modelData
                 required property int index
-                readonly property var app: switcher.displayedApps.find(function(app) { return app.key === application.modelData }) || null
-                readonly property bool selected: switcher.applicationOnly || index === switcher.selectedIndex
-                width: switcher.displayedApps.length === 1 ? apps.width : 104
+                readonly property var app: switcher.candidates.find(function(app) { return app.key === application.modelData }) || null
+                readonly property bool selected: index === switcher.selectedIndex
+                width: switcher.candidates.length === 1 ? apps.width : 104
                 height: 96
                 Rectangle {
                     anchors.centerIn: parent
@@ -113,7 +110,7 @@ Item {
                         }
                     }
                 }
-                MouseArea { anchors.fill: parent; onClicked: switcher.candidateClicked(switcher.applicationOnly ? switcher.selectedIndex : application.index) }
+                MouseArea { anchors.fill: parent; onClicked: switcher.candidateClicked(application.index) }
             }
             MouseArea {
                 anchors.fill: parent
@@ -156,7 +153,7 @@ Item {
         visible: switcher.windowsExpanded
         Rectangle {
             id: pointer
-            readonly property var selectedItem: apps.itemAtIndex(switcher.applicationOnly ? 0 : switcher.selectedIndex)
+            readonly property var selectedItem: apps.itemAtIndex(switcher.selectedIndex)
             x: Math.max(20, Math.min(bubble.width - 36,
                 strip.x + 16 + (selectedItem ? selectedItem.x - apps.contentX + selectedItem.width / 2 : apps.width / 2) - 8))
             y: -8
