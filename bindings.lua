@@ -1,7 +1,7 @@
 -- Loaded by the installer-managed include in the user's bindings.lua.
 -- No file IO or subprocess waits occur in compositor key callbacks.
 local M = { plugin_id = "jessie.switchboard", ready = false }
-if not (hl and o and hl.is_key_down and hl.dsp and hl.dsp.global) then return M end
+if not (hl and o and hl.unbind and hl.is_key_down and hl.dsp and hl.dsp.global) then return M end
 
 local function ready()
   local lease = _G.switchboard_lease
@@ -28,8 +28,11 @@ end
 
 bind("ALT + TAB", "Switchboard: next application", "window-forward", next_window(true))
 bind("ALT + SHIFT + TAB", "Switchboard: previous application", "window-backward", next_window(false))
-bind("ALT + grave", "Switchboard: next application window", "app-windows-forward")
-bind("ALT + SHIFT + grave", "Switchboard: previous application window", "app-windows-backward")
+-- Keep the physical ` / ~ key working with international dead-key layouts.
+hl.unbind("ALT + grave")
+hl.unbind("ALT + SHIFT + grave")
+bind("ALT + code:49", "Switchboard: next application window", "app-windows-forward")
+bind("ALT + SHIFT + code:49", "Switchboard: previous application window", "app-windows-backward")
 bind("SUPER + TAB", "Switchboard: next workspace", "workspace-forward", function()
   hl.dispatch(hl.dsp.focus({ workspace = "m+1" }))
 end)

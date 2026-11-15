@@ -110,7 +110,7 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"workspace","direction":-
 | `Alt+反引号` | 同应用窗口正向选择，松开 Alt 确认 |
 | `Alt+Shift+反引号` | 同应用窗口反向选择，松开 Alt 确认 |
 
-接管上述六个组合。反引号指键盘上的 ` / ~ 键，Shift 只改变循环方向。
+接管上述六个组合。反引号指键盘上的 ` / ~ 键，按物理键码绑定，并兼容 US 国际布局的死键；Shift 只改变循环方向。
 `Win+反引号` 和 `Win+Shift+反引号` 保留 Quake console 的系统或用户入口；
 `Win+Ctrl+Tab` 保留原有绑定。自定义键盘布局可调整仓库 `bindings.lua` 后重新安装。
 `window-forward` / `window-backward` 全局入口及 `mode: "window"` 保留兼容名称，候选已改为应用分组。

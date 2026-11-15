@@ -330,7 +330,8 @@ Item {
                         // While inhibited, Tab reaches Qt instead of the global shortcut.
                         if (!root.request.globalInput || shortcutInhibitor.active)
                             root.step((event.modifiers & Qt.ShiftModifier) || event.key === Qt.Key_Backtab ? -1 : 1)
-                    } else if (root.mode === "window" && (event.key === Qt.Key_QuoteLeft || event.key === Qt.Key_AsciiTilde)) {
+                    } else if (root.mode === "window" && [Qt.Key_QuoteLeft, Qt.Key_AsciiTilde,
+                        Qt.Key_Dead_Grave, Qt.Key_Dead_Tilde].indexOf(event.key) >= 0) {
                         if (!root.request.globalInput || shortcutInhibitor.active)
                             root.expandWindows(event.modifiers & Qt.ShiftModifier ? -1 : 1)
                     } else if ([Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down].indexOf(event.key) >= 0) root.navigate(Commons.Util.readingKey(event))

@@ -4,6 +4,7 @@ local function action(kind)
   return function(payload) return { kind = kind, payload = payload } end
 end
 hl = {
+  unbind = function(keys) registry[keys] = nil end,
   is_key_down = function() return false end,
   dispatch = function(target) sent[#sent + 1] = target end,
   dsp = {
@@ -30,11 +31,13 @@ local tab = {
   { key = "ALT + SHIFT + TAB", shortcut = "window-backward", fallback = { "zorder", "cycle" } },
   { key = "SUPER + TAB", shortcut = "workspace-forward", fallback = { "focus" } },
   { key = "SUPER + SHIFT + TAB", shortcut = "workspace-backward", fallback = { "focus" } },
-  { key = "ALT + grave", shortcut = "app-windows-forward", fallback = {} },
-  { key = "ALT + SHIFT + grave", shortcut = "app-windows-backward", fallback = {} },
+  { key = "ALT + code:49", shortcut = "app-windows-forward", fallback = {} },
+  { key = "ALT + SHIFT + code:49", shortcut = "app-windows-backward", fallback = {} },
 }
+local former_grave_keys = { "ALT + grave", "ALT + SHIFT + grave" }
 local untouched = { "SUPER + grave", "SUPER + SHIFT + grave", "SUPER + CTRL + TAB" }
 for _, entry in ipairs(tab) do o.bind(entry.key, "Original " .. entry.key, function() end) end
+for _, key in ipairs(former_grave_keys) do o.bind(key, "Original " .. key, function() end) end
 for _, key in ipairs(untouched) do o.bind(key, "Original " .. key, function() end) end
 if arg[3] then dofile(arg[3]) end
 local originals = {}
@@ -46,13 +49,16 @@ local count = 0
 for _, binding in pairs(registry) do
   if binding.description and binding.description:match("^Switchboard:") then count = count + 1 end
 end
-local expected = arg[2] == "legacy" and 7 or (arg[2] == "none" or arg[2] == "unavailable") and 0 or 6
+local expected = arg[2] == "legacy" and 8 or (arg[2] == "none" or arg[2] == "unavailable") and 0 or 6
 assert(count == expected, "Unexpected number of plugin bindings: " .. count)
 if arg[2] == "legacy" then return end
 for _, key in ipairs(untouched) do
   assert(registry[key].description == originals[key], "Changed unrelated binding: " .. key)
 end
 if expected == 0 then return end
+for _, key in ipairs(former_grave_keys) do
+  assert(registry[key] == nil, "Left a competing symbol binding: " .. key)
+end
 
 for _, entry in ipairs(tab) do
   local binding = assert(registry[entry.key])
