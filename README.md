@@ -4,14 +4,7 @@
 
 ## 插件简介
 
-Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用、窗口与工作区切换插件，运行在现有的 `omarchy-shell` 中。它提供应用图标列表、同应用窗口预览和工作区概览，方便在多个任务之间快速切换。
-
-- **切换应用**：`Alt+Tab` 按最近使用顺序列出当前工作区的应用。同一应用合并为一个图标，多个窗口时显示数量角标；确认后进入该应用最近使用的窗口。
-- **切换同应用窗口**：`Alt+反引号` 展开当前应用的窗口气泡，通过实时预览选择目标窗口；也可在应用列表中操作高亮应用。
-- **切换工作区**：`Win+Tab` 显示打开时聚焦屏幕的工作区网格，包含前 5 个编号槽位及实际位于该屏幕上的其他数字工作区。空槽位显示壁纸，确认时才创建；移屏或断屏合并后的来访工作区也会保留。
-- **融入桌面**：跟随 Omarchy 的颜色、字体、圆角与中英文设置。实时预览只捕获可见卡片，关闭面板后停止窗口捕获。
-
-工作区角标沿用 Omarchy 的本屏 `1–9、0` 编号，`0` 表示第 10 个槽位；本屏编号段之外的来访工作区显示 `↳ 全局 ID`，避免重复角标。网格随数量调整，超过 12 项后固定四列并滚动查看。
+Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用、窗口与工作区切换插件，运行在现有的 `omarchy-shell` 中。它提供应用图标列表、同应用窗口预览和工作区概览，方便在多个任务之间快速切换。工作区角标沿用 Omarchy 的本屏 `1–9、0` 编号，`0` 表示第 10 个槽位；本屏编号段之外的来访工作区显示 `↳ 全局 ID`，避免重复角标。工作区较多时可滚动查看。
 
 ### 界面预览
 
@@ -19,34 +12,23 @@ Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用�
 
 ![Win+Tab 工作区概览](docs/images/workspace-overview.png)
 
-当前为开发版，普通命名工作区（如 `a`、`coding`）暂不纳入概览，见[已知问题](docs/known-issues.md)。窗口图像 LRU 缓存和完整 GPU / 内存性能预算尚未实现；桌面兼容性与实际验证范围见[桌面验收说明](tests/integration/README.md)及[验证记录](docs/development-validation.md)。
+## 快捷键
 
-## 快捷键简介
+通过 Omarchy 安装并启用插件后，以下切换快捷键默认生效。`Win` 指键盘上的 Windows 键。面板打开后，也可使用表中的按键和鼠标操作。
 
-通过 Git 安装并启用插件后，以下快捷键默认生效。源码开发安装需使用 `./scripts/install.sh --bindings`。`Win` 对应 Hyprland 的 `Super`，反引号指键盘上的 `` ` / ~ `` 键。
-
-| 快捷键 | 功能 |
+| 快捷键 / 操作 | 功能 |
 | --- | --- |
-| `Win+Tab` | 正向选择当前屏幕的工作区，松开 Win 确认 |
-| `Win+Shift+Tab` | 反向选择当前屏幕的工作区，松开 Win 确认 |
-| `Alt+Tab` | 正向选择当前工作区的应用，松开 Alt 确认 |
-| `Alt+Shift+Tab` | 反向选择当前工作区的应用，松开 Alt 确认 |
-| `Alt+反引号` | 正向选择同应用窗口，松开 Alt 确认 |
-| `Alt+Shift+反引号` | 反向选择同应用窗口，松开 Alt 确认 |
-
-面板打开后也可使用以下操作：
-
-| 按键 / 操作 | 功能 |
-| --- | --- |
-| `Tab` / `Shift+Tab` | 按候选顺序循环选择；窗口气泡打开时，先收起气泡再切换应用 |
-| 方向键 | 按行列选择，支持同时按住 Win / Alt；网格左右不跨行，上下保持同列，边缘保持原选择 |
+| `Win+Tab` | 选择当前屏幕的下一个工作区，松开 Win 确认 |
+| `Win+Shift+Tab` | 选择当前屏幕的上一个工作区，松开 Win 确认 |
+| `Alt+Tab` | 选择当前工作区的下一个应用，松开 Alt 确认 |
+| `Alt+Shift+Tab` | 选择当前工作区的上一个应用，松开 Alt 确认 |
+| `Alt+~` | 选择同应用的下一个窗口，松开 Alt 确认 |
+| `Alt+Shift+~` | 选择同应用的上一个窗口，松开 Alt 确认 |
+| `Tab` / `Shift+Tab` | 面板打开时，正向 / 反向循环选择 |
+| 方向键 | 面板打开时，按行列选择 |
 | `Enter` / 鼠标点击 | 确认选择 |
 | `Esc` | 取消选择，恢复打开前的窗口焦点 |
 | 鼠标滚轮 | 内容超出面板时滚动查看 |
-
-`Alt+Tab` 的图标面板延迟约 100 ms 显示，快速点按仍会立即处理选择与确认。当前工作区没有可切换应用时，应用列表和窗口气泡均不打开。命令行打开使用显式确认，无需按住修饰键。
-
-启用绑定会接管上表中的六个组合。`Win+反引号`、`Win+Shift+反引号` 保留 Quake console 入口，`Win+Ctrl+Tab` 保留原有绑定。反引号按物理键码绑定，并兼容 US 国际布局的死键；自定义布局可修改仓库的 `bindings.lua` 后重新安装。
 
 ## 安装
 
@@ -58,14 +40,12 @@ Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用�
 omarchy plugin add https://github.com/JessieChan0730/omarchy-switchboard.git --enable
 ```
 
-插件安装到 `~/.config/omarchy/plugins/jessie.switchboard/`。无需上架插件市场即可通过 Git URL 安装。首次 Git 安装默认接管上表六个快捷键，已有的 `bindingsEnabled` 设置优先。
-
-快捷键仅在插件运行期间注册，不向 `~/.config/hypr/bindings.lua` 添加永久 include。Hyprland 配置重载后会重新注册。停用、移除或关闭快捷键时，会触发一次 Hyprland 配置重载，恢复用户当前配置文件中的绑定；异常退出后，租约到期约 8–9 秒内执行同样的恢复。其他插件的临时绑定需要支持配置重载后重新注册。
+插件安装到 `~/.config/omarchy/plugins/jessie.switchboard/`。首次安装默认启用切换快捷键，已有快捷键设置优先。停用、卸载插件或关闭插件快捷键后，会恢复原快捷键。
 
 ### 检查与试用
 
 ```bash
-# 查看就绪状态、构建 ID 与快捷键状态
+# 查看插件和快捷键状态
 omarchy-shell jessie.switchboard status
 
 # 应用列表
@@ -78,7 +58,7 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"app-windows"}'
 omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
 ```
 
-`status` 中 `ready` 应为 `true`；启用快捷键时 `bindings` 也应为 `true`。命令打开后，使用 Tab / 方向键选择、Enter 确认、Esc 取消。加入 `"direction":-1` 可反向初始选择，例如 `'{"mode":"workspace","direction":-1}'`；打开时会按指定方向移动一次选中项。
+`status` 中 `ready` 应为 `true`；启用快捷键时 `bindings` 也应为 `true`。命令打开后，使用 Tab / 方向键选择、Enter 确认、Esc 取消。
 
 只使用命令调用、保留原快捷键时，在插件启用状态下执行：
 
@@ -122,7 +102,7 @@ Git 安装使用：
 omarchy plugin update jessie.switchboard
 ```
 
-每个发布构建使用独立的 `runtime/<buildId>/` 路径，manifest 指向完整的新运行目录，避免 QML / JavaScript 继续使用旧缓存。更新命令会重新扫描插件；需要强制重新加载时执行：
+更新后如需重新加载，执行：
 
 ```bash
 omarchy restart shell

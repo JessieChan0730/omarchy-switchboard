@@ -4,14 +4,7 @@
 
 ## Introduction
 
-Omarchy Switchboard is an application, window, and workspace switcher for [Omarchy](https://github.com/omacom/omarchy). It runs inside the existing `omarchy-shell` and provides an application icon list, previews of windows within an application, and a workspace overview to help you move between tasks.
-
-- **Switch applications**: `Alt+Tab` lists applications on the current workspace in most recently used order. Each application has one icon, with a count badge for multiple windows; confirming opens its most recently used window.
-- **Switch windows within an application**: `` Alt+` `` opens a bubble with live window previews for the current application. You can also use it on the highlighted application in the icon list.
-- **Switch workspaces**: `Win+Tab` shows a grid for the monitor focused when the panel opens. It includes the first five numbered slots and other numeric workspaces actually on that monitor. Empty slots show the wallpaper and are created only on confirmation. Visiting workspaces moved from another monitor or merged after a monitor disconnect are included.
-- **Match your desktop**: The panel follows Omarchy's colors, fonts, corner radius, and Chinese / English language setting. Live window capture runs only for visible cards and stops when the panel closes.
-
-Local workspace badges follow Omarchy's `1–9, 0` numbering, with `0` representing the tenth slot. Visiting workspaces outside the monitor's numbering range display `↳ global ID` to avoid duplicate badges. The grid adapts to the number of workspaces; above 12 entries, it uses four columns with scrolling.
+Omarchy Switchboard is an application, window, and workspace switcher for [Omarchy](https://github.com/omacom/omarchy). It runs inside the existing `omarchy-shell` and provides an application icon list, previews of windows within an application, and a workspace overview to help you move between tasks. Local workspace badges follow Omarchy's `1–9, 0` numbering, with `0` representing the tenth slot. Visiting workspaces outside the monitor's numbering range display `↳ global ID` to avoid duplicate badges. You can scroll when there are more workspaces than fit in the panel.
 
 ### Screenshots
 
@@ -19,34 +12,23 @@ Local workspace badges follow Omarchy's `1–9, 0` numbering, with `0` represent
 
 ![Win+Tab workspace overview](docs/images/workspace-overview.png)
 
-This is a development preview. Ordinary named workspaces such as `a` or `coding` are currently excluded; see [known issues](docs/known-issues.md). A window image LRU cache and a full GPU / memory budget have yet to be implemented. See the [desktop acceptance checklist](tests/integration/README.md) and [validation records](docs/development-validation.md) for compatibility and the scope of actual testing.
-
 ## Keyboard Shortcuts
 
-Git installation enables these shortcuts by default. For a source development installation, use `./scripts/install.sh --bindings`. `Win` is Hyprland's `Super` key. The backtick is the `` ` / ~ `` key on your keyboard.
+Installing and enabling the plugin through Omarchy activates the switching shortcuts below by default. `Win` is the Windows key on your keyboard. While a panel is open, you can also use the keyboard and mouse actions in the table.
 
-| Shortcut | Action |
+| Shortcut / Input | Action |
 | --- | --- |
 | `Win+Tab` | Select the next workspace on the current monitor; release Win to confirm |
 | `Win+Shift+Tab` | Select the previous workspace on the current monitor; release Win to confirm |
 | `Alt+Tab` | Select the next application on the current workspace; release Alt to confirm |
 | `Alt+Shift+Tab` | Select the previous application on the current workspace; release Alt to confirm |
-| `` Alt+` `` | Select the next window within the application; release Alt to confirm |
-| `` Alt+Shift+` `` | Select the previous window within the application; release Alt to confirm |
-
-While a panel is open, you can also use:
-
-| Key / Input | Action |
-| --- | --- |
-| `Tab` / `Shift+Tab` | Cycle through candidates; if the window bubble is open, close it and switch applications |
-| Arrow keys | Navigate rows and columns, including while holding Win / Alt; in a grid, left / right stay within the row, up / down keep the column, and selection stays put at an edge |
+| `Alt+~` | Select the next window within the application; release Alt to confirm |
+| `Alt+Shift+~` | Select the previous window within the application; release Alt to confirm |
+| `Tab` / `Shift+Tab` | While a panel is open, cycle forward / backward through items |
+| Arrow keys | While a panel is open, navigate rows and columns |
 | `Enter` / Mouse click | Confirm the selection |
 | `Esc` | Cancel and restore the window focus from before the panel opened |
 | Mouse wheel | Scroll when the content exceeds the panel size |
-
-The `Alt+Tab` icon panel appears after about 100 ms; selection and confirmation still respond immediately during a quick tap. The application list and window bubble stay closed when the current workspace has no eligible applications. Panels opened from the command line use explicit confirmation and do not require a held modifier.
-
-Enabling bindings takes over the six combinations above. `` Win+` `` and `` Win+Shift+` `` keep their Quake console bindings, and `Win+Ctrl+Tab` keeps its existing binding. The backtick uses a physical keycode and supports the dead key in US international layouts. For a custom layout, edit the repository's `bindings.lua` and reinstall.
 
 ## Installation
 
@@ -58,14 +40,12 @@ Use a running Omarchy / Hyprland Lua session with matching Quickshell and Qt 6. 
 omarchy plugin add https://github.com/JessieChan0730/omarchy-switchboard.git --enable
 ```
 
-The plugin is installed at `~/.config/omarchy/plugins/jessie.switchboard/`. A marketplace listing is optional for installation through a Git URL. A new Git installation enables the six shortcuts above; an existing `bindingsEnabled` setting takes precedence.
-
-Shortcuts are registered at runtime, without a permanent include in `~/.config/hypr/bindings.lua`, and registered again after Hyprland reloads. Disabling, removing, or turning off shortcuts triggers one Hyprland configuration reload to restore bindings from the user's current configuration files. After an abnormal exit, the lease expires and restores the configuration within approximately 8–9 seconds. Other plugins that register temporary bindings must support registration after configuration reloads.
+The plugin is installed at `~/.config/omarchy/plugins/jessie.switchboard/`. A new installation enables the switching shortcuts by default; existing shortcut settings take precedence. Disabling or removing the plugin, or turning off its shortcuts, restores your original shortcuts.
 
 ### Check and try the plugin
 
 ```bash
-# Check readiness, build ID, and actual shortcut state
+# Check plugin and shortcut status
 omarchy-shell jessie.switchboard status
 
 # Application list
@@ -78,7 +58,7 @@ omarchy-shell shell summon jessie.switchboard '{"mode":"app-windows"}'
 omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
 ```
 
-`ready` should be `true`; with shortcuts enabled, `bindings` should also be `true`. Use Tab / arrow keys to select, Enter to confirm, and Esc to cancel. Add `"direction":-1` for an initial reverse selection, for example `'{"mode":"workspace","direction":-1}'`. Opening a panel advances the selection once in the requested direction.
+`ready` should be `true`; with shortcuts enabled, `bindings` should also be `true`. Use Tab / arrow keys to select, Enter to confirm, and Esc to cancel.
 
 To keep your existing shortcuts and use commands only, run while the plugin is enabled:
 
@@ -122,7 +102,7 @@ For a Git installation:
 omarchy plugin update jessie.switchboard
 ```
 
-Each release uses a separate `runtime/<buildId>/` directory. The manifest points at the complete new runtime, avoiding stale QML / JavaScript caches. Updating rescans plugins. To force a fresh shell process when needed:
+If you need to reload after updating, run:
 
 ```bash
 omarchy restart shell
