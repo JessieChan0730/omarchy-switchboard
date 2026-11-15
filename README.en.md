@@ -19,14 +19,6 @@ Local workspace badges follow Omarchy's `1–9, 0` numbering, with `0` represent
 
 ![Win+Tab workspace overview](docs/images/workspace-overview.png)
 
-**Alt+Tab: Application icons with a count badge for multiple windows in the same application.**
-
-![Alt+Tab application switcher](docs/images/application-switcher.png)
-
-**Alt + backtick: A window bubble with live previews for selecting a window within the application.**
-
-![Alt + backtick window previews](docs/images/application-windows.png)
-
 This is a development preview. Ordinary named workspaces such as `a` or `coding` are currently excluded; see [known issues](docs/known-issues.md). A window image LRU cache and a full GPU / memory budget have yet to be implemented. See the [desktop acceptance checklist](tests/integration/README.md) and [validation records](docs/development-validation.md) for compatibility and the scope of actual testing.
 
 ## Keyboard Shortcuts
@@ -162,41 +154,6 @@ npm run dev
 | `npm run check` | Run the full build, QML / Qt / manifest checks, Lua / Bash syntax checks, and installer and wallpaper cache tests |
 
 Set `QT_BIN_DIR` to choose a Qt tools directory or `OMARCHY_SHELL_DIR` to choose an Omarchy shell source directory. QML tooling metadata adjustments are written to the repository's `.cache/`.
-
-### Project Structure
-
-```text
-Overlay.qml              Plugin entry point, panel input, and global shortcuts
-controllers/             Sessions, configuration, and activation coordination
-adapters/                Hyprland data and actual usage history
-components/              Application list, window previews, workspace grid, and theme
-previews/                Window capture sources and wallpaper cache
-src/logic/               Candidates, sorting, state machine, validation, and coordinates
-bindings.lua             Lua bindings with runtime fallback
-scripts/                 Building, checking, installation, backups, and uninstallation
-tests/unit/              ESM and plain-text tests in Qt
-tests/installer/         Isolated installation, rollback, binding, and uninstall tests
-tests/previews/          Wallpaper cache tests
-tests/integration/       Component layout regression tests and desktop acceptance
-dist/plugin/             Complete build output
-```
-
-### Debugging and Configuration
-
-```bash
-omarchy-shell jessie.switchboard status
-omarchy-shell jessie.switchboard step -1
-omarchy-shell jessie.switchboard expand 1
-omarchy-shell jessie.switchboard confirm
-omarchy-shell jessie.switchboard cancel
-
-# Merge settings, for example to hide monitor names
-omarchy-shell jessie.switchboard settings '{"showMonitorLabels":false}'
-```
-
-Settings live in this plugin's entry in the `plugins[]` array of your `shell.json`. The installer manages `bindingsEnabled`; use the scripts to change it. `slotsPerMonitor` is a legacy slot setting and does not limit the overview's candidate count. `previewMode` and window cache fields are reserved for future configuration; previews currently use live window capture. The wallpaper thumbnail cache keeps up to four images at `${XDG_CACHE_HOME:-~/.cache}/omarchy-switchboard/backgrounds/`.
-
-See the [architecture notes](docs/architecture.md) for implementation details. Run checks appropriate to your changes; `npm run check` runs the full suite. Follow the [integration test guide](tests/integration/README.md) for desktop acceptance and [AGENTS.md](AGENTS.md) for testing multiple outputs with one physical monitor. Programmatic global shortcut calls or injected keys do not establish that physical modifier hold / release timing has passed acceptance testing.
 
 ## Acknowledgments
 

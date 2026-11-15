@@ -19,14 +19,6 @@ Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用�
 
 ![Win+Tab 工作区概览](docs/images/workspace-overview.png)
 
-**Alt+Tab：应用图标列表，同应用的多个窗口合并显示数量角标。**
-
-![Alt+Tab 应用切换面板](docs/images/application-switcher.png)
-
-**Alt+反引号：展开同应用窗口气泡，通过实时预览选择窗口。**
-
-![Alt+反引号同应用窗口预览](docs/images/application-windows.png)
-
 当前为开发版，普通命名工作区（如 `a`、`coding`）暂不纳入概览，见[已知问题](docs/known-issues.md)。窗口图像 LRU 缓存和完整 GPU / 内存性能预算尚未实现；桌面兼容性与实际验证范围见[桌面验收说明](tests/integration/README.md)及[验证记录](docs/development-validation.md)。
 
 ## 快捷键简介
@@ -162,41 +154,6 @@ npm run dev
 | `npm run check` | 完整构建、QML / Qt / manifest 检查、Lua / Bash 语法及安装器与壁纸缓存测试 |
 
 `QT_BIN_DIR` 可指定 Qt 工具目录，`OMARCHY_SHELL_DIR` 可指定 Omarchy shell 源码目录。QML 工具元数据的兼容处理写入仓库 `.cache/`。
-
-### 项目结构
-
-```text
-Overlay.qml              插件入口、面板交互与全局快捷键
-controllers/             会话、配置与激活协调
-adapters/                Hyprland 数据与真实使用历史
-components/              应用列表、窗口预览、工作区网格与主题
-previews/                窗口捕获源与壁纸缓存
-src/logic/               候选、排序、状态机、校验和坐标换算
-bindings.lua             带运行状态降级的 Lua 绑定
-scripts/                 构建、检查、安装、备份与卸载
-tests/unit/              Qt 中的 ESM 与纯文本测试
-tests/installer/         隔离环境中的安装、回滚、绑定与卸载测试
-tests/previews/          壁纸缓存测试
-tests/integration/       组件布局回归与真实桌面验收
-dist/plugin/             完整构建产物
-```
-
-### 调试与配置
-
-```bash
-omarchy-shell jessie.switchboard status
-omarchy-shell jessie.switchboard step -1
-omarchy-shell jessie.switchboard expand 1
-omarchy-shell jessie.switchboard confirm
-omarchy-shell jessie.switchboard cancel
-
-# 合并更新设置，例如隐藏显示器名称
-omarchy-shell jessie.switchboard settings '{"showMonitorLabels":false}'
-```
-
-设置位于用户 `shell.json` 的 `plugins[]` 中本插件条目。`bindingsEnabled` 由安装脚本管理，应使用脚本切换；`slotsPerMonitor` 是旧版槽位配置，不限制概览候选数量。`previewMode` 和窗口缓存相关字段保留为后续配置，当前使用实时窗口预览。壁纸小图缓存最多保留四张，位于 `${XDG_CACHE_HOME:-~/.cache}/omarchy-switchboard/backgrounds/`。
-
-实现细节见[架构说明](docs/architecture.md)。修改后按范围执行检查，完整检查为 `npm run check`；真实桌面验收见[集成测试说明](tests/integration/README.md)，单屏验证多输出的流程见 [AGENTS.md](AGENTS.md)。程序触发全局入口或注入按键不代表物理修饰键按住 / 松开时序已经通过验收。
 
 ## 鸣谢
 
