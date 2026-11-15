@@ -6,7 +6,7 @@ import { build } from "esbuild";
 import { checkTypeScript, dist, root } from "./tools";
 
 const runtimeFiles = [
-  "Overlay.qml", "manifest.json", "bindings.lua", "README.md", "LICENSE", "计划书.md",
+  "Overlay.qml", "manifest.json", "bindings.lua", "README.md", "README.en.md", "LICENSE",
   "controllers", "adapters", "previews", "components", "i18n", "docs",
 ];
 

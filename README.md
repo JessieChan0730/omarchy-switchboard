@@ -1,225 +1,214 @@
 # Omarchy Switchboard
 
-为 Omarchy 提供窗口切换面板与工作区概览，采用 **QML + TypeScript + Lua**。
-最初的交互目标与后续规划见 [计划书](计划书.md)。开发插件 ID 为 `jessie.switchboard`。
-插件以轻量为目标：`Win+Tab` 切工作区，`Alt+Tab` 切应用，`Alt+反引号` 切同应用窗口，
-各入口支持 Shift 反向选择。Win 在 Hyprland 配置中称为 Super。
+**简体中文** | [English](README.en.md)
 
-当前开发版已接入真实 Hyprland 数据、窗口候选过滤、MRU、工作区网格与排序、
-窗口/工作区确认激活。工作区概览与 Omarchy 顶部工作区栏一致：
-Win+Tab 只列出打开面板时聚焦显示器的工作区，包含该显示器前 5 个编号槽位，
-再加入实际位于该显示器上的其他编号工作区和来访工作区，
-空工作区也可切换，预览显示当前桌面壁纸。使用放大的实时预览卡片，按数量排成网格：2 个为 1 行 2 列，
-4 个为 2 行 2 列，6 个为 2 行 3 列，8 个为 2 行 4 列；更多工作区增加行数。
-卡片只在右上角显示小号、半透明的编号或名称，选中时添加主题色细边框，多显示器时可附带显示器名称，去掉“工作区”、
-窗口数量和当前/上一个文字。面板不显示顶部标题、底部新建入口和按键提示，
-宽高随网格调整并限制在屏幕内，卡片按可用高度等比例缩小，让 9 项的三行网格完整显示。
-超过 12 项后固定四列，面板保持三行的卡片尺寸与高度，后续行通过滚动查看，避免卡片继续缩小。
-卡片全部可见时切换行不滚动；超出三行或卡片达到最小高度仍放不下时，仅在选中项超出视口时滚动。
-网格可滚动时，右侧显示细位置提示，随鼠标滚动和键盘选择同步；卡片全部可见时隐藏。
-本屏编号段内的角标与顶部栏一致，显示 `1–9、0`，其中 `0` 对应第 10 个槽位。
-段外工作区显示 `↳ 全局 ID`，例如 `↳ 11`、`↳ 20`，避免移屏或断屏合并后出现重复角标；
-悬停可查看完整 ID 与顶部栏角标的对应关系。内部工作区 ID 保持不变。
-面板支持 Tab/Shift+Tab、
-方向键、Enter、Esc 和鼠标点击，并跟随 Omarchy 的颜色、字体、圆角和中英文设置。
+## 插件简介
 
-Alt+Tab 在屏幕中央显示一行应用图标，范围固定为打开时的当前工作区，按最近使用顺序排列。
-按快捷键进入时，图标面板延迟约 100ms 显示，减少快速点按时的闪现；选择、连续步进和松开 Alt
-确认仍立即处理，提前松开不必等满显示延迟。命令打开、Alt+反引号和 Win+Tab 保持立即显示。
-当前工作区没有可切换应用时，Alt+Tab 和 Alt+反引号均不显示面板、不接管键盘焦点；只有一个应用时仍可打开。
-面板打开后最后一个候选应用消失时自动收起。
-同一应用只显示一个图标，多个窗口显示数量角标；松开 Alt 进入该应用最近使用的窗口。
-选中应用名下方以较小、较淡的一行文字显示目标窗口标题，主层跟随该应用最近使用的窗口，
-展开窗口气泡后跟随所选窗口；长标题省略，空标题隐藏。
-应用身份优先使用桌面入口 ID，找不到入口时使用 app ID；身份未知的窗口单独显示。
-Alt+反引号保留当前工作区的整排应用图标，在选中应用下面展开窗口气泡，逐项显示 `ScreencopyView` 实时预览。
-列表未打开时从当前聚焦应用进入，首次选择它的下一个窗口；已打开时操作高亮应用。
-气泡打开后按 Tab 收起气泡并继续切应用；Shift 反向，Esc 取消并恢复原窗口焦点，松开 Alt 确认。
-应用图标与窗口预览始终各为一行，超出宽度后横向滚动并自动显示选中项。
-工作区卡片通过 `ScreencopyView` 实时捕获窗口内容，
-按真实窗口位置合成预览；捕获暂不可用时显示应用图标或名称。
-只捕获面板中可见的卡片，关闭面板后停止捕获并销毁窗口捕获组件，不保留窗口截图缓存。
-桌面壁纸提前生成最长边不超过 960 像素的小图并预加载，关闭面板后保留，避免大壁纸在打开时延迟出现。
-壁纸变化时刷新，磁盘缓存最多保留四张，位于 `${XDG_CACHE_HOME:-~/.cache}/omarchy-switchboard/backgrounds/`。
-**窗口图像 LRU 与完整 GPU/内存性能预算尚未实现。** 多显示器逻辑已有自动测试，
-双屏实机、全屏/XWayland、左右修饰键与极快点按仍需按 [桌面验收说明](tests/integration/README.md) 测试。
+Omarchy Switchboard 是 [Omarchy](https://github.com/omacom/omarchy) 的应用、窗口与工作区切换插件，运行在现有的 `omarchy-shell` 中。它提供应用图标列表、同应用窗口预览和工作区概览，方便在多个任务之间快速切换。
 
-## 开发
+- **切换应用**：`Alt+Tab` 按最近使用顺序列出当前工作区的应用。同一应用合并为一个图标，多个窗口时显示数量角标；确认后进入该应用最近使用的窗口。
+- **切换同应用窗口**：`Alt+反引号` 展开当前应用的窗口气泡，通过实时预览选择目标窗口；也可在应用列表中操作高亮应用。
+- **切换工作区**：`Win+Tab` 显示打开时聚焦屏幕的工作区网格，包含前 5 个编号槽位及实际位于该屏幕上的其他数字工作区。空槽位显示壁纸，确认时才创建；移屏或断屏合并后的来访工作区也会保留。
+- **融入桌面**：跟随 Omarchy 的颜色、字体、圆角与中英文设置。实时预览只捕获可见卡片，关闭面板后停止窗口捕获。
 
-### 环境与检查
+工作区角标沿用 Omarchy 的本屏 `1–9、0` 编号，`0` 表示第 10 个槽位；本屏编号段之外的来访工作区显示 `↳ 全局 ID`，避免重复角标。网格随数量调整，超过 12 项后固定四列并滚动查看。
 
-需要 Node.js 22.12 或更高版本、npm、Python 3、Lua（`lua`、`luac`）、Bash，以及与当前 Omarchy
-匹配的 Qt 6、Quickshell 和 Omarchy shell 源码。安装与桌面测试需要正在运行的 Hyprland Lua 会话。
-Node.js 和 npm 包只用于开发及构建，插件运行时使用 QML、预编译 ESM 和 Lua；
-壁纸缓存使用 Python 3 与 ImageMagick（Omarchy 默认安装），在独立进程中准备小图。
+### 界面预览
 
-```bash
-npm ci
-npm run check
-```
+**Win+Tab：工作区概览，包含实时窗口预览与空槽位壁纸。**
 
-| 命令 | 用途 |
+![Win+Tab 工作区概览](docs/images/workspace-overview.png)
+
+**Alt+Tab：应用图标列表，同应用的多个窗口合并显示数量角标。**
+
+![Alt+Tab 应用切换面板](docs/images/application-switcher.png)
+
+**Alt+反引号：展开同应用窗口气泡，通过实时预览选择窗口。**
+
+![Alt+反引号同应用窗口预览](docs/images/application-windows.png)
+
+当前为开发版，普通命名工作区（如 `a`、`coding`）暂不纳入概览，见[已知问题](docs/known-issues.md)。窗口图像 LRU 缓存和完整 GPU / 内存性能预算尚未实现；桌面兼容性与实际验证范围见[桌面验收说明](tests/integration/README.md)及[验证记录](docs/development-validation.md)。
+
+## 快捷键简介
+
+以下快捷键需通过 `./scripts/install.sh --bindings` 启用。`Win` 对应 Hyprland 的 `Super`，反引号指键盘上的 `` ` / ~ `` 键。
+
+| 快捷键 | 功能 |
 | --- | --- |
-| `npm run typecheck` | 检查业务 TypeScript 和构建脚本 |
-| `npm run build` | 类型检查后生成 `.mjs` 并组装 `dist/plugin/` |
-| `npm run dev` | 监听源码并重新构建；产物保留在仓库中 |
-| `npm run lint:qml` | 检查 QML 与 Omarchy/Quickshell 导入 |
-| `npm run test:qt` | 在 Qt 引擎中测试发布 ESM，并验证真实切换组件的布局与编号 |
-| `npm run validate` | 执行 Omarchy manifest 校验 |
-| `npm run check` | 构建、QML 检查、Qt 测试、manifest、Lua/Bash 语法、安装器与壁纸缓存测试 |
+| `Win+Tab` | 正向选择当前屏幕的工作区，松开 Win 确认 |
+| `Win+Shift+Tab` | 反向选择当前屏幕的工作区，松开 Win 确认 |
+| `Alt+Tab` | 正向选择当前工作区的应用，松开 Alt 确认 |
+| `Alt+Shift+Tab` | 反向选择当前工作区的应用，松开 Alt 确认 |
+| `Alt+反引号` | 正向选择同应用窗口，松开 Alt 确认 |
+| `Alt+Shift+反引号` | 反向选择同应用窗口，松开 Alt 确认 |
 
-`QT_BIN_DIR` 可指定 Qt 工具目录，`OMARCHY_SHELL_DIR` 可指定 shell 源码目录。
-QML 工具元数据的兼容处理仅写入仓库 `.cache/`，不改动系统源码。
+面板打开后也可使用以下操作：
 
-### 本地安装与更新
+| 按键 / 操作 | 功能 |
+| --- | --- |
+| `Tab` / `Shift+Tab` | 按候选顺序循环选择；窗口气泡打开时，先收起气泡再切换应用 |
+| 方向键 | 按行列选择，支持同时按住 Win / Alt；网格左右不跨行，上下保持同列，边缘保持原选择 |
+| `Enter` / 鼠标点击 | 确认选择 |
+| `Esc` | 取消选择，恢复打开前的窗口焦点 |
+| 鼠标滚轮 | 内容超出面板时滚动查看 |
 
-在仓库根目录执行：
+`Alt+Tab` 的图标面板延迟约 100 ms 显示，快速点按仍会立即处理选择与确认。当前工作区没有可切换应用时，应用列表和窗口气泡均不打开。命令行打开使用显式确认，无需按住修饰键。
+
+启用绑定会接管上表中的六个组合。`Win+反引号`、`Win+Shift+反引号` 保留 Quake console 入口，`Win+Ctrl+Tab` 保留原有绑定。反引号按物理键码绑定，并兼容 US 国际布局的死键；自定义布局可修改仓库的 `bindings.lua` 后重新安装。
+
+## 安装
+
+### 环境要求
+
+使用源码安装，需要：
+
+- 正在运行的 Omarchy / Hyprland Lua 会话，以及匹配的 Quickshell、Qt 6 和 Omarchy shell 源码。
+- Git、Node.js **22.12 或更高版本**、npm、Python 3、Lua（`lua`、`luac`）和 Bash。
+- Qt 工具 `qmllint`、`qmltestrunner`，以及 `omarchy`、`omarchy-shell`、`hyprctl` 命令。
+- ImageMagick，用于生成壁纸缩略图，Omarchy 默认安装。
+
+Node.js 与 npm 仅用于构建和检查，插件运行时使用 QML、预编译 JavaScript ESM 和 Lua。壁纸缓存由 Python 3 与 ImageMagick 在独立进程中生成。
+
+### 从源码安装
 
 ```bash
+git clone https://github.com/JessieChan0730/omarchy-switchboard.git
+cd omarchy-switchboard
+npm ci
 ./scripts/install.sh
 ```
 
-脚本先运行完整检查，再部署并启用 `~/.config/omarchy/plugins/jessie.switchboard/`。
-**首次安装默认保留现有快捷键**，通过下面的命令打开面板测试。
-重复安装会更新插件，并保留上次选择的快捷键模式和插件设置。
-部署使用独立的 `runtime/<构建 ID>/` 路径，安装器核对新实例的构建 ID，避免宿主 QML 缓存继续运行旧代码。
-
-```bash
-# 应用图标：只列出当前普通工作区应用
-omarchy-shell shell summon jessie.switchboard '{"mode":"window"}'
-
-# 当前聚焦应用的窗口气泡
-omarchy-shell shell summon jessie.switchboard '{"mode":"app-windows"}'
-
-# 工作区网格：与顶部栏一致，包含空工作区
-omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
-
-# 反向初始选择
-omarchy-shell shell summon jessie.switchboard '{"mode":"workspace","direction":-1}'
-```
-
-打开后使用 Tab/Shift+Tab 或方向键选择，Enter 或鼠标点击确认，Esc 取消。
-命令行打开默认使用 Enter 确认，不要求按住修饰键。初次打开仍按方向移动一次选中项。
-
-启用快捷键的安装方式：
+脚本运行完整检查后，将插件部署并启用到 `~/.config/omarchy/plugins/jessie.switchboard/`。首次安装默认保留现有快捷键；需要使用上表快捷键时执行：
 
 ```bash
 ./scripts/install.sh --bindings
 ```
 
-| 快捷键 | 行为 |
-| --- | --- |
-| `Win+Tab` | 工作区正向选择，松开 Win 确认 |
-| `Win+Shift+Tab` | 工作区反向选择，松开 Win 确认 |
-| `Alt+Tab` | 应用正向选择，松开 Alt 确认 |
-| `Alt+Shift+Tab` | 应用反向选择，松开 Alt 确认 |
-| `Alt+反引号` | 同应用窗口正向选择，松开 Alt 确认 |
-| `Alt+Shift+反引号` | 同应用窗口反向选择，松开 Alt 确认 |
+安装器会备份配置和已有同 ID 插件，重新加载 Hyprland 与插件，并核对运行实例的 `buildId` 和就绪状态；部署失败时回滚本次修改。
 
-接管上述六个组合。反引号指键盘上的 ` / ~ 键，按物理键码绑定，并兼容 US 国际布局的死键；Shift 只改变循环方向。
-`Win+反引号` 和 `Win+Shift+反引号` 保留 Quake console 的系统或用户入口；
-`Win+Ctrl+Tab` 保留原有绑定。自定义键盘布局可调整仓库 `bindings.lua` 后重新安装。
-`window-forward` / `window-backward` 全局入口及 `mode: "window"` 保留兼容名称，候选已改为应用分组。
-插件未就绪时，Tab 组合沿用窗口/工作区直接循环降级；新增反引号组合等待插件恢复。
+### 检查与试用
 
-面板打开时，按住 Win/Alt 也可用方向键按网格行列选择；左右不跨行，上下保持同列，
-遇到边缘或末行空位时保持原选择。Tab / Shift+Tab 按候选顺序循环，Enter 确认、Esc 取消。
-面板关闭后，Win+方向键恢复系统或用户配置的用途。
+```bash
+# 查看就绪状态、构建 ID 与快捷键模式
+omarchy-shell jessie.switchboard status
 
-修饰键确认目前在面板打开期间异步调用本机 `hl.is_key_down()`，同时检查左右 Alt 或左右 Super。
-持续按住不会因固定超时确认；查询失败时保留面板，可用 Enter 或 Esc。
-全局快捷键和面板 Tab 使用单一路径，避免同一次按键重复步进。该路径仍需真实键盘时序验收。
+# 应用列表
+omarchy-shell shell summon jessie.switchboard '{"mode":"window"}'
 
-关闭快捷键接管并保留插件供命令测试：
+# 当前应用的窗口预览
+omarchy-shell shell summon jessie.switchboard '{"mode":"app-windows"}'
+
+# 当前屏幕的工作区概览
+omarchy-shell shell summon jessie.switchboard '{"mode":"workspace"}'
+```
+
+命令打开后，使用 Tab / 方向键选择、Enter 确认、Esc 取消。加入 `"direction":-1` 可反向初始选择，例如 `'{"mode":"workspace","direction":-1}'`；打开时会按指定方向移动一次选中项。
+
+## 更新
+
+在已有仓库目录中执行：
+
+```bash
+git pull --ff-only
+npm ci
+./scripts/install.sh
+```
+
+重复安装会更新插件，并保留上次的快捷键模式和插件设置。每次部署使用独立的 `runtime/<buildId>/` 路径，核对新实例后才报告成功。
+
+需要主动切换快捷键模式时，使用 `./scripts/install.sh --bindings` 启用，或使用以下命令恢复原始绑定并保留插件供命令调用：
 
 ```bash
 ./scripts/install.sh --no-bindings
 ```
 
-### 卸载与恢复
+## 卸载
+
+在仓库根目录执行：
 
 ```bash
 ./scripts/uninstall.sh
 ```
 
-安装器修改配置前备份用户 `shell.json`、`hypr/bindings.lua` 和已有插件。
-备份与安装记录保存在 `${XDG_STATE_HOME:-~/.local/state}/omarchy-switchboard/`。
-卸载只移除本插件条目及受管理的 Lua include，保留用户后来添加的其他设置和绑定；
-如果安装前存在同 ID 插件，会恢复其目录和原条目，并保留后来修改的设置字段。
-重复卸载可安全执行，备份目录保留供手动查阅。
+卸载会移除本插件条目及受管理的 Lua include，保留其他插件、设置和后来添加的快捷键。如果安装前存在同 ID 插件，会恢复其目录和原条目，并保留后来修改的设置字段。重复卸载可安全执行。
 
-安装、更新及卸载均执行 `hyprctl reload`、`hyprctl configerrors` 和插件重新扫描。
-配置检查失败或插件没有报告就绪时，安装器回滚本次修改。文件损坏或受管理标记不完整时，
-脚本会报告错误，不覆盖无法解析的配置。
+备份与安装记录保存在 `${XDG_STATE_HOME:-~/.local/state}/omarchy-switchboard/`，卸载后保留，便于手动查阅。
 
-开启快捷键接管时，插件每两秒更新一次运行状态租约。停用或异常退出后，租约清除或在六秒内过期，
-Lua 的 Tab 绑定退回直接切换。面板关闭后停止修饰键查询。
-可用 `omarchy plugin disable jessie.switchboard` 停用插件；要立即恢复原始绑定，使用 `--no-bindings` 或卸载脚本。
+如只需临时停用，可执行 `omarchy plugin disable jessie.switchboard`。启用绑定时，插件不可用后 Tab 组合会在运行状态租约清除或过期后退回直接循环切换；立即恢复原始绑定请使用 `--no-bindings` 或卸载脚本。
 
-### 诊断与配置
+## 开发
+
+### 开发流程
+
+技术栈为 **QML + TypeScript + Lua**：QML 负责界面和输入，TypeScript 负责候选、排序与会话逻辑，Lua 负责全局快捷键。TypeScript 编译为 Qt 可加载的 `.mjs`，业务代码不依赖 Node.js 或浏览器 API。
+
+在满足安装环境要求后：
 
 ```bash
-# 查看是否就绪、候选数量、选中索引、会话阶段及绑定模式，不输出标题或图像
-omarchy-shell jessie.switchboard status
+npm ci
+npm run dev
+```
 
-# 切应用、展开/循环同应用窗口、确认和取消
+`npm run dev` 监听源码并更新仓库中的 `dist/plugin/`，不会自动部署。完成修改后执行 `./scripts/install.sh`，由脚本检查并部署到当前桌面；已有安装保留当前快捷键模式。
+
+| 命令 | 用途 |
+| --- | --- |
+| `npm run typecheck` | 检查业务 TypeScript 和构建脚本 |
+| `npm run build` | 类型检查后生成 ESM 并组装 `dist/plugin/` |
+| `npm run dev` | 监听源码并重新构建 |
+| `npm run lint:qml` | 检查 QML 与 Omarchy / Quickshell 导入 |
+| `npm run test:qt` | 在 Qt 中测试发布 ESM 和真实组件布局 |
+| `npm run validate` | 校验 Omarchy manifest |
+| `npm run check` | 完整构建、QML / Qt / manifest 检查、Lua / Bash 语法及安装器与壁纸缓存测试 |
+
+`QT_BIN_DIR` 可指定 Qt 工具目录，`OMARCHY_SHELL_DIR` 可指定 Omarchy shell 源码目录。QML 工具元数据的兼容处理写入仓库 `.cache/`。
+
+### 项目结构
+
+```text
+Overlay.qml              插件入口、面板交互与全局快捷键
+controllers/             会话、配置与激活协调
+adapters/                Hyprland 数据与真实使用历史
+components/              应用列表、窗口预览、工作区网格与主题
+previews/                窗口捕获源与壁纸缓存
+src/logic/               候选、排序、状态机、校验和坐标换算
+bindings.lua             带运行状态降级的 Lua 绑定
+scripts/                 构建、检查、安装、备份与卸载
+tests/unit/              Qt 中的 ESM 与纯文本测试
+tests/installer/         隔离环境中的安装、回滚、绑定与卸载测试
+tests/previews/          壁纸缓存测试
+tests/integration/       组件布局回归与真实桌面验收
+dist/plugin/             完整构建产物
+```
+
+### 调试与配置
+
+```bash
+omarchy-shell jessie.switchboard status
 omarchy-shell jessie.switchboard step -1
 omarchy-shell jessie.switchboard expand 1
 omarchy-shell jessie.switchboard confirm
 omarchy-shell jessie.switchboard cancel
 
-# 更新本插件设置，合并保留其他字段
+# 合并更新设置，例如隐藏显示器名称
 omarchy-shell jessie.switchboard settings '{"showMonitorLabels":false}'
 ```
 
-设置存放于用户 `shell.json` 的 `plugins[]` 中本插件对象，支持 `configVersion: 1`、
-`showWorkspaceLabels`、`showMonitorLabels`。现有 `slotsPerMonitor` 字段（1–10）用于旧版槽位逻辑，
-概览数量独立跟随顶部栏。编号起点来自 Omarchy 的显示器映射；缺少映射时，与顶部栏一样
-从显示器当前工作区推导编号段。工作区候选固定在打开时聚焦的显示器，使用真实全局 ID，
-界面显示显示器和本地槽位。`bindingsEnabled` 由安装脚本管理，应结合 include 一起调整。
-Omarchy 默认为每台显示器分配 10 个本地槽位；插拔显示器或移动工作区时，额外的来访数字
-工作区仍可留在该屏幕。概览不限制为 10 项，本屏十槽显示 `1–9、0`，段外工作区始终显示
-`↳ 全局 ID`，不受显示器数量或 `showMonitorLabels` 设置影响。判断依据为当前显示器编号段，
-手动移屏与断屏合并使用相同规则；编号未知时显示完整 ID。普通命名工作区（如 `a`）暂不列入概览，后续适配见
-[已知问题](docs/known-issues.md)。
-`previewMode` 和缓存相关字段保留为后续配置，当前工作区使用实时预览，不读取这些字段。
-壁纸使用固定预算的小图缓存，窗口内容没有图像缓存。
+设置位于用户 `shell.json` 的 `plugins[]` 中本插件条目。`bindingsEnabled` 由安装脚本管理，应使用脚本切换；`slotsPerMonitor` 是旧版槽位配置，不限制概览候选数量。`previewMode` 和窗口缓存相关字段保留为后续配置，当前使用实时窗口预览。壁纸小图缓存最多保留四张，位于 `${XDG_CACHE_HOME:-~/.cache}/omarchy-switchboard/backgrounds/`。
 
-窗口与工作区分别维护用于候选排序的 MRU 历史；应用分组按组内最近窗口排序，预览高亮和取消不改变历史。
-应用列表和窗口气泡同步窗口的加入、关闭及移出；已有应用顺序与所选窗口身份保持，选中目标离开时取消。
-窗口确认前核对打开时的工作区与显示器，拒绝跟随移走的窗口切到其他工作区。工作区 Tab 循环和方向键选择
-概览中的全部卡片，包括空工作区；全部为空时仍可选择前 5 个槽位。打开或取消面板不创建工作区，
-确认尚不存在的槽位时才创建并切换。
-面板打开期间同步数字工作区的加入、离开和重新编号；已有候选保持相对顺序，新项追加到
-末尾，选中项按真实全局 ID 保持。选中的来访工作区被移走或重新编号时关闭面板，重新打开
-后使用最新候选；不重新创建已经消失的来访工作区，也不跟随它切到其他屏幕。
-目标确认前会重新验证身份和显示器；工作区移到其他屏幕后拒绝激活，来源屏幕断开时关闭面板。
-覆盖层释放输入后再激活，最多进行三次焦点核对。
+实现细节见[架构说明](docs/architecture.md)。修改后按范围执行检查，完整检查为 `npm run check`；真实桌面验收见[集成测试说明](tests/integration/README.md)，单屏验证多输出的流程见 [AGENTS.md](AGENTS.md)。程序触发全局入口或注入按键不代表物理修饰键按住 / 松开时序已经通过验收。
 
-### 项目结构
+## 鸣谢
 
-```text
-Overlay.qml                   宿主入口、面板交互与全局快捷键
-controllers/                  会话、配置、真实激活协调
-adapters/                     Hyprland 数据与真实历史
-components/                   窗口卡片、工作区实时预览、网格与主题
-previews/                     按窗口生命周期解析可捕获的 Wayland 句柄
-src/logic/                    候选、排序、状态机、校验和坐标换算
-bindings.lua                  带运行状态降级的 Lua 绑定
-scripts/install.sh            本地构建、检查和安装
-scripts/uninstall.sh          本地卸载与恢复
-scripts/local_plugin.py       部署事务、备份与配置条目管理
-scripts/build.ts              TypeScript/ESM 构建
-scripts/check.ts              静态检查与自动测试
-tests/unit/                   Qt 中的 ESM 与纯文本测试
-tests/installer/              隔离目录中的安装、回滚与卸载测试
-tests/integration/            实际桌面验收步骤
-dist/plugin/                  完整构建产物
-```
+感谢以下项目提供基础能力与设计参考：
 
-`npm run dev` 只更新仓库产物；完成修改后再运行 `./scripts/install.sh` 部署。
-业务代码不依赖 Node 或浏览器 API；运行时无需 TypeScript 工具链。
+- [Omarchy](https://github.com/omacom/omarchy)：插件宿主、主题、翻译与工作区栏。
+- [Hyprland](https://github.com/hyprwm/Hyprland)：窗口、工作区、显示器管理与 Lua / IPC 接口。
+- [Quickshell](https://quickshell.org/) 与 [Qt](https://www.qt.io/)：QML 界面、Wayland 集成与实时窗口捕获。
+- [Orbit](https://github.com/rohan-patnaik/orbit)：Omarchy 原生切换面板、MRU 与输入交互的参考。
+- [Hyprspace](https://github.com/KZDKM/Hyprspace)：工作区概览与窗口布局预览的设计参考。
+- [Hyprshell](https://github.com/H3rmt/hyprshell)：应用图标匹配、窗口切换与配置交互的参考。
 
-## 许可
+## License
 
-MIT。当前代码未复制参考项目源码，后续复用时保留各自版权和许可声明。
+本项目采用 [MIT License](LICENSE)，版权归 © 2026 Jessie 所有。
