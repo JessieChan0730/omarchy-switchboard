@@ -32,6 +32,7 @@ ShellRoot {
     property bool selecting: true
     property bool returning: false
     property bool testingWindows: false
+    property bool testingSingleApplication: false
     property real twelveCardWidth: 0
     property real twelveCardHeight: 0
     property real twelvePanelHeight: 0
@@ -76,7 +77,7 @@ ShellRoot {
         previewProvider: provider
         windowsExpanded: true
         candidates: Array.from({length: 17}, function(_, index) {
-            return {key: "application:" + index, appId: "", windows: [{key: "window:" + index, title: "Test " + index}]}
+            return {key: "application:" + index, appId: "", windows: [{key: "window:" + index, title: "<b>Test " + index + "</b>"}]}
         })
         windowCandidates: Array.from({length: 8}, function(_, index) {
             return {key: "window:" + index, title: "Test " + index, appId: ""}
@@ -100,6 +101,15 @@ ShellRoot {
         return check(edge < 0 || Math.abs(indicator.position - edge) < 0.01, "position hint reaches the scroll edge")
     }
 
+    function checkApplicationName(app: Item): bool {
+        const name = app.children.find(function(child) { return child.objectName === "applicationName" })
+        return check(!!name && name.visible && name.text === app.app.windows[0].title
+            && name.textFormat === Text.PlainText && name.horizontalAlignment === Text.AlignHCenter
+            && name.maximumLineCount === 1 && name.elide === Text.ElideRight
+            && name.y >= 92 && Math.abs(name.x - 8) < 0.01 && name.y + name.height <= app.height,
+            "each application name is plain text, centered below its icon, and fits the row")
+    }
+
     Timer {
         interval: 50
         repeat: true
@@ -110,6 +120,16 @@ ShellRoot {
                     && child.children.some(function(item) { return item.objectName === "applicationList" }) }).children.find(function(item) { return item.objectName === "applicationList" }) as ListView
                 const windowList = windowSwitcher.children.find(function(child) { return child.children
                     && child.children.some(function(item) { return item.objectName === "applicationWindowList" }) }).children.find(function(item) { return item.objectName === "applicationWindowList" }) as ListView
+                if (test.testingSingleApplication) {
+                    appList.forceLayout()
+                    const app = appList.itemAtIndex(0)
+                    if (!test.check(!!app && app.x === 0 && app.width === 104 && app.width < appList.width,
+                        "a single application keeps the leftmost icon position")) return
+                    if (!test.checkApplicationName(app)) return
+                    console.log("PASS: application names and single-application alignment")
+                    Qt.quit()
+                    return
+                }
                 if (test.selecting) {
                     windowSwitcher.selectedIndex = test.returning ? 0 : windowSwitcher.candidates.length - 1
                     windowSwitcher.selectedWindowIndex = test.returning ? 0 : windowSwitcher.windowCandidates.length - 1
@@ -127,6 +147,10 @@ ShellRoot {
                 if (!test.check(!!card && card.x >= windowList.contentX - 1 && card.x + card.width <= windowList.contentX + windowList.width + 1,
                     "selected window preview is fully visible")) return
                 if (!test.check(app.y === 0 && card.y === 0, "neither row wraps")) return
+                if (!test.checkApplicationName(app)) return
+                const neighbour = appList.itemAtIndex(test.returning ? 1 : windowSwitcher.selectedIndex - 1)
+                if (!test.check(!!neighbour && !neighbour.selected, "an unselected neighbouring application is present")) return
+                if (!test.checkApplicationName(neighbour)) return
                 if (!test.returning) {
                     if (!test.check(windowSwitcher.applicationContentX > 0 && windowSwitcher.windowContentX > 0, "both rows reveal their final selection")) return
                     test.returning = true
@@ -138,7 +162,10 @@ ShellRoot {
                 windowSwitcher.windowsExpanded = false
                 if (!test.check(windowSwitcher.preferredHeight === windowSwitcher.stripHeight, "collapsing returns to icon-only height")) return
                 console.log("PASS: app and window rows scroll horizontally and reveal selected items")
-                Qt.quit()
+                windowSwitcher.candidates = [windowSwitcher.candidates[0]]
+                windowSwitcher.selectedIndex = 0
+                windowSwitcher.width = windowSwitcher.preferredWidth
+                test.testingSingleApplication = true
                 return
             }
 

@@ -16,16 +16,10 @@ Item {
     property bool windowsExpanded: false
     property var applicationKeys: []
     property var windowKeys: []
-    readonly property int stripHeight: 168
+    readonly property int stripHeight: 152
     readonly property real preferredWidth: Math.max(240, candidates.length * 104 + 32,
         windowsExpanded ? Math.min(3, windowCandidates.length) * 288 + 32 : 0)
     readonly property real preferredHeight: stripHeight + (windowsExpanded ? 256 : 0)
-    readonly property var selectedApp: candidates[selectedIndex] || null
-    readonly property var selectedEntry: selectedApp && selectedApp.appId ? DesktopEntries.heuristicLookup(selectedApp.appId) : null
-    readonly property string selectedName: selectedEntry ? selectedEntry.name : selectedApp ? selectedApp.appId || selectedApp.windows[0].title : ""
-    readonly property var targetWindow: windowsExpanded ? windowCandidates[selectedWindowIndex] || null
-        : selectedApp ? selectedApp.windows[0] || null : null
-    readonly property string targetTitle: targetWindow ? (targetWindow.title || "").replace(/[\r\n\t]+/g, " ").trim() : ""
     readonly property real applicationContentX: apps.contentX - apps.originX
     readonly property real windowContentX: windows.contentX - windows.originX
     signal candidateClicked(int index)
@@ -62,7 +56,7 @@ Item {
             id: apps
             objectName: "applicationList"
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
-            height: 96
+            height: 120
             clip: true
             orientation: ListView.Horizontal
             boundsBehavior: Flickable.StopAtBounds
@@ -73,11 +67,13 @@ Item {
                 required property string modelData
                 required property int index
                 readonly property var app: switcher.candidates.find(function(app) { return app.key === application.modelData }) || null
+                readonly property var entry: app && app.appId ? DesktopEntries.heuristicLookup(app.appId) : null
                 readonly property bool selected: index === switcher.selectedIndex
-                width: switcher.candidates.length === 1 ? apps.width : 104
-                height: 96
+                width: 104
+                height: apps.height
                 Rectangle {
-                    anchors.centerIn: parent
+                    id: iconFrame
+                    anchors { top: parent.top; topMargin: 4; horizontalCenter: parent.horizontalCenter }
                     width: 88; height: 88
                     radius: Math.min(16, theme.cornerRadius + 4)
                     color: application.selected ? Qt.rgba(theme.foregroundColor.r, theme.foregroundColor.g, theme.foregroundColor.b, 0.08) : "transparent"
@@ -86,10 +82,7 @@ Item {
                         id: icon
                         anchors.centerIn: parent
                         width: 60; height: 60
-                        source: {
-                            const entry = application.app && application.app.appId ? DesktopEntries.heuristicLookup(application.app.appId) : null
-                            return Quickshell.iconPath(entry && entry.icon ? entry.icon : "application-x-executable", true)
-                        }
+                        source: Quickshell.iconPath(application.entry && application.entry.icon ? application.entry.icon : "application-x-executable", true)
                         fillMode: Image.PreserveAspectFit
                     }
                     PlainText {
@@ -114,6 +107,17 @@ Item {
                         }
                     }
                 }
+                PlainText {
+                    objectName: "applicationName"
+                    anchors { top: iconFrame.bottom; topMargin: 8; left: iconFrame.left; right: iconFrame.right }
+                    text: application.entry ? application.entry.name : application.app
+                        ? application.app.appId || (application.app.windows[0] ? application.app.windows[0].title : "") : ""
+                    color: theme.foregroundColor
+                    font { family: theme.fontFamily; pixelSize: theme.bodySize }
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                }
                 MouseArea { anchors.fill: parent; onClicked: switcher.candidateClicked(application.index) }
             }
             MouseArea {
@@ -127,29 +131,14 @@ Item {
                 }
             }
         }
-        Column {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12 }
-            spacing: 4
-            PlainText {
-                width: parent.width
-                text: switcher.candidates.length ? switcher.selectedName : switcher.emptyText
-                color: theme.foregroundColor
-                font { family: theme.fontFamily; pixelSize: theme.bodySize }
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-            }
-            PlainText {
-                objectName: "targetWindowTitle"
-                width: parent.width
-                visible: text.length > 0
-                text: switcher.targetTitle
-                color: theme.foregroundColor
-                opacity: 0.65
-                font { family: theme.fontFamily; pixelSize: Math.max(10, theme.bodySize - 2) }
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-                maximumLineCount: 1
-            }
+        PlainText {
+            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 16 }
+            visible: switcher.candidates.length === 0
+            text: switcher.emptyText
+            color: theme.foregroundColor
+            font { family: theme.fontFamily; pixelSize: theme.bodySize }
+            horizontalAlignment: Text.AlignLeft
+            elide: Text.ElideRight
         }
         Rectangle {
             anchors { bottom: parent.bottom; bottomMargin: 3; horizontalCenter: parent.horizontalCenter }

@@ -28,6 +28,7 @@ Item {
     property string originWindowKey: ""
     property bool windowsExpanded: false
     readonly property var selectedApplication: mode === "window" ? candidates[session.selectedIndex] || null : null
+    readonly property string selectedApplicationKey: selectedApplication ? selectedApplication.key : ""
     readonly property var applicationWindows: selectedApplication ? selectedApplication.windows : []
     property string currentKey: ""
     property string errorKey: ""
@@ -158,6 +159,14 @@ Item {
         windowSession.begin({mode: "app-windows", direction: direction}, session.state.context)
         windowSession.ready(applicationWindows.map(function(w) { return w.key }), session.state.context.originWindowKey, false)
     }
+    function autoExpandWindows(key: string): void {
+        if (!panelVisible || mode !== "window" || windowsExpanded || selectedApplicationKey !== key || applicationWindows.length < 2) return
+        // Revealing previews must preserve the application's default target.
+        // An explicit Alt+grave instead advances from the focused window.
+        windowsExpanded = true
+        windowSession.begin({mode: "app-windows", direction: 1}, session.state.context)
+        windowSession.ready(applicationWindows.map(function(w) { return w.key }), "", false)
+    }
     function select(index: int): void {
         windowsExpanded = false
         session.select(index)
@@ -233,6 +242,12 @@ Item {
     }
     Controllers.SessionController { id: session; onCommitRequested: function(key) { root.commit(key) }; onEmptyConfirmed: root.dismiss() }
     Controllers.SessionController { id: windowSession; onCommitRequested: function(key) { root.commitWindow(key) }; onEmptyConfirmed: root.dismiss() }
+    Controllers.ApplicationDwellController {
+        enabled: root.panelVisible && root.mode === "window" && !root.windowsExpanded && session.phase === "selecting"
+        applicationKey: root.selectedApplicationKey
+        windowCount: root.applicationWindows.length
+        onExpandRequested: function(key) { root.autoExpandWindows(key) }
+    }
     Controllers.ActivationController {
         id: activation
         adapter: desktopAdapter
