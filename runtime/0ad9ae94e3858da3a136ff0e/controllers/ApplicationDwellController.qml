@@ -14,7 +14,7 @@ QtObject {
         if (eligible) dwell.restart()
     }
     property Timer dwell: Timer {
-        interval: 250
+        interval: 700
         running: controller.eligible
         onTriggered: controller.expandRequested(controller.applicationKey)
     }

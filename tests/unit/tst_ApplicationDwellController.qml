@@ -17,41 +17,41 @@ TestCase {
 
     function test_waitsThenExpandsOnce(): void {
         dwell.enabled = true
-        wait(180)
+        wait(500)
         compare(expansion.count, 0)
-        tryCompare(expansion, "count", 1, 200)
+        tryCompare(expansion, "count", 1, 400)
         compare(expansion.signalArguments[0][0], "application:first")
-        wait(280)
+        wait(800)
         compare(expansion.count, 1)
     }
     function test_changingApplicationsRestartsDwell(): void {
         dwell.enabled = true
-        wait(160)
+        wait(450)
         dwell.applicationKey = "application:second"
-        wait(160)
+        wait(450)
         compare(expansion.count, 0)
-        tryCompare(expansion, "count", 1, 200)
+        tryCompare(expansion, "count", 1, 500)
         compare(expansion.signalArguments[0][0], "application:second")
     }
     function test_metadataRefreshDoesNotRestartDwell(): void {
         dwell.enabled = true
-        wait(160)
+        wait(450)
         dwell.windowCount = 3
-        tryCompare(expansion, "count", 1, 160)
+        tryCompare(expansion, "count", 1, 400)
     }
     function test_disabledPanelDoesNotExpandLater(): void {
         dwell.enabled = true
-        wait(160)
+        wait(450)
         dwell.enabled = false
-        wait(280)
+        wait(800)
         compare(expansion.count, 0)
     }
     function test_singleWindowNeverAutoExpands(): void {
         dwell.windowCount = 1
         dwell.enabled = true
-        wait(280)
+        wait(800)
         compare(expansion.count, 0)
         dwell.windowCount = 2
-        tryCompare(expansion, "count", 1, 400)
+        tryCompare(expansion, "count", 1, 1000)
     }
 }

@@ -106,7 +106,8 @@ ShellRoot {
         return check(!!name && name.visible && name.text === app.app.windows[0].title
             && name.textFormat === Text.PlainText && name.horizontalAlignment === Text.AlignHCenter
             && name.maximumLineCount === 1 && name.elide === Text.ElideRight
-            && name.y >= 92 && Math.abs(name.x - 8) < 0.01 && name.y + name.height <= app.height,
+            && name.y >= 92 && Math.abs(name.x + name.width / 2 - app.width / 2) < 0.01
+            && name.y + name.height <= app.height,
             "each application name is plain text, centered below its icon, and fits the row")
     }
 
@@ -123,10 +124,21 @@ ShellRoot {
                 if (test.testingSingleApplication) {
                     appList.forceLayout()
                     const app = appList.itemAtIndex(0)
-                    if (!test.check(!!app && app.x === 0 && app.width === 104 && app.width < appList.width,
-                        "a single application keeps the leftmost icon position")) return
+                    if (!test.check(!!app && !appList.interactive && Math.abs(windowSwitcher.applicationContentX) < 0.01,
+                        "a single application stays visible without horizontal scrolling")) return
                     if (!test.checkApplicationName(app)) return
-                    console.log("PASS: application names and single-application alignment")
+                    const name = app.children.find(function(child) { return child.objectName === "applicationName" })
+                    if (!test.check(Math.abs(name.mapToItem(windowSwitcher, name.width / 2, 0).x - windowSwitcher.width / 2) < 0.01,
+                        "a single application's icon and name are centered in the panel")) return
+                    if (!windowSwitcher.windowsExpanded) {
+                        windowSwitcher.windowsExpanded = true
+                        windowSwitcher.width = windowSwitcher.preferredWidth
+                        return
+                    }
+                    const outline = windowList.parent.children.find(function(child) { return child.tipX !== undefined })
+                    if (!test.check(!!outline && Math.abs(outline.tipX - outline.width / 2) < 0.01,
+                        "the expanded single application's bubble points to the centered icon")) return
+                    console.log("PASS: application names and centered single-application layout before and after expansion")
                     Qt.quit()
                     return
                 }

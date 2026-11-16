@@ -30,7 +30,7 @@ Installing and enabling the plugin through Omarchy activates the switching short
 | `Esc` | Cancel and restore the window focus from before the panel opened |
 | Mouse wheel | Scroll when the content exceeds the panel size |
 
-Alt+Tab centers each application name below its icon and truncates long names with an ellipsis. Keeping an application with multiple windows highlighted for 250ms automatically opens its window previews, with its most recently used window selected first. Use `Alt+~` / `Alt+Shift+~` to choose another window. Tab moves to another application, collapses the previews, and restarts the delay; releasing Alt activates the selected window.
+Alt+Tab centers each application name below its icon and truncates long names with an ellipsis. Keeping an application with multiple windows highlighted for 700ms automatically opens its window previews, with its most recently used window selected first. Use `Alt+~` / `Alt+Shift+~` to choose another window. Tab moves to another application, collapses the previews, and restarts the delay; releasing Alt activates the selected window.
 
 ## Installation
 

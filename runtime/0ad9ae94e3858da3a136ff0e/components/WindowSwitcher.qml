@@ -69,7 +69,7 @@ Item {
                 readonly property var app: switcher.candidates.find(function(app) { return app.key === application.modelData }) || null
                 readonly property var entry: app && app.appId ? DesktopEntries.heuristicLookup(app.appId) : null
                 readonly property bool selected: index === switcher.selectedIndex
-                width: 104
+                width: switcher.candidates.length === 1 ? apps.width : 104
                 height: apps.height
                 Rectangle {
                     id: iconFrame
