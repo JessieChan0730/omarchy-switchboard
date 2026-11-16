@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "jessie.switchboard",
   "name": "Omarchy Switchboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Jessie",
   "description": "Application, window and workspace switcher for Omarchy",
   "kinds": ["overlay"],

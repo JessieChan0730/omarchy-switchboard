@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "jessie.switchboard",
   "name": "Omarchy Switchboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Jessie",
   "description": "Application, window and workspace switcher for Omarchy",
   "kinds": [
@@ -11,7 +11,7 @@
   "keepLoaded": true,
   "defaultBindingsEnabled": true,
   "entryPoints": {
-    "overlay": "runtime/95150dabaca5962e626bec50/Overlay.qml"
+    "overlay": "runtime/40e1cb907ca32d31267d2b9e/Overlay.qml"
   },
-  "buildId": "95150dabaca5962e626bec50"
+  "buildId": "40e1cb907ca32d31267d2b9e"
 }
