@@ -33,6 +33,7 @@ ShellRoot {
     property bool returning: false
     property bool testingWindows: false
     property bool testingSingleApplication: false
+    property int bubbleTestStage: 0
     property real twelveCardWidth: 0
     property real twelveCardHeight: 0
     property real twelvePanelHeight: 0
@@ -121,6 +122,17 @@ ShellRoot {
                     && child.children.some(function(item) { return item.objectName === "applicationList" }) }).children.find(function(item) { return item.objectName === "applicationList" }) as ListView
                 const windowList = windowSwitcher.children.find(function(child) { return child.children
                     && child.children.some(function(item) { return item.objectName === "applicationWindowList" }) }).children.find(function(item) { return item.objectName === "applicationWindowList" }) as ListView
+                if (test.bubbleTestStage === 1) {
+                    if (windowSwitcher.bubbleVisible) return
+                    if (!test.check(windowSwitcher.preferredHeight === windowSwitcher.stripHeight,
+                        "collapsing releases preview space after the exit transition")) return
+                    windowSwitcher.candidates = [windowSwitcher.candidates[0]]
+                    windowSwitcher.selectedIndex = 0
+                    windowSwitcher.width = windowSwitcher.preferredWidth
+                    test.testingSingleApplication = true
+                    test.bubbleTestStage = 2
+                    return
+                }
                 if (test.testingSingleApplication) {
                     appList.forceLayout()
                     const app = appList.itemAtIndex(0)
@@ -133,6 +145,15 @@ ShellRoot {
                     if (!windowSwitcher.windowsExpanded) {
                         windowSwitcher.windowsExpanded = true
                         windowSwitcher.width = windowSwitcher.preferredWidth
+                        return
+                    }
+                    if (windowSwitcher.bubbleOpacity < 1) return
+                    if (test.bubbleTestStage === 2) {
+                        windowSwitcher.panelActive = false
+                        windowSwitcher.panelActive = true
+                        if (!test.check(windowSwitcher.bubbleOpacity === 0,
+                            "reopening interrupts the old transition and starts with transparent previews")) return
+                        test.bubbleTestStage = 3
                         return
                     }
                     const outline = windowList.parent.children.find(function(child) { return child.tipX !== undefined })
@@ -172,12 +193,8 @@ ShellRoot {
                 if (!test.check(Math.abs(windowSwitcher.applicationContentX) < 0.01 && Math.abs(windowSwitcher.windowContentX) < 0.01,
                     "both rows return to origin")) return
                 windowSwitcher.windowsExpanded = false
-                if (!test.check(windowSwitcher.preferredHeight === windowSwitcher.stripHeight, "collapsing returns to icon-only height")) return
                 console.log("PASS: app and window rows scroll horizontally and reveal selected items")
-                windowSwitcher.candidates = [windowSwitcher.candidates[0]]
-                windowSwitcher.selectedIndex = 0
-                windowSwitcher.width = windowSwitcher.preferredWidth
-                test.testingSingleApplication = true
+                test.bubbleTestStage = 1
                 return
             }
 

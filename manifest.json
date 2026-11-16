@@ -11,7 +11,7 @@
   "keepLoaded": true,
   "defaultBindingsEnabled": true,
   "entryPoints": {
-    "overlay": "runtime/0ad9ae94e3858da3a136ff0e/Overlay.qml"
+    "overlay": "runtime/95150dabaca5962e626bec50/Overlay.qml"
   },
-  "buildId": "0ad9ae94e3858da3a136ff0e"
+  "buildId": "95150dabaca5962e626bec50"
 }

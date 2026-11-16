@@ -13,11 +13,19 @@ Rectangle {
     readonly property var captureSource: windowRecord ? previewProvider.sourceForWindow(windowRecord.key) : null
     readonly property ScreencopyView capture: captureLoader.item as ScreencopyView
     readonly property bool hasPreview: capture !== null && capture.hasContent
+    readonly property bool presentationReady: readiness.ready
+    readonly property bool fallbackVisible: readiness.fallbackReady && !hasPreview
     signal clicked()
     Theme { id: theme }
     color: theme.backgroundColor
     radius: Math.min(12, theme.cornerRadius)
     border { width: selected ? 2 : 1; color: selected ? theme.accentColor : theme.borderColor }
+    Controllers.PreviewReadinessController {
+        id: readiness
+        active: card.previewEnabled
+        sourceKey: card.windowRecord ? card.windowRecord.key : ""
+        hasContent: card.hasPreview
+    }
     Item {
         id: preview
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
@@ -47,7 +55,7 @@ Rectangle {
             id: icon
             anchors.centerIn: parent
             width: 48; height: 48
-            visible: !card.hasPreview && status === Image.Ready
+            visible: card.fallbackVisible && status === Image.Ready
             source: {
                 const appId = card.windowRecord ? card.windowRecord.appId : ""
                 const entry = appId ? DesktopEntries.heuristicLookup(appId) : null

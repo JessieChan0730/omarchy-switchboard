@@ -14,12 +14,27 @@ Item {
     property int selectedIndex: -1
     property int selectedWindowIndex: -1
     property bool windowsExpanded: false
+    property bool panelActive: true
+    property var displayedWindows: []
+    property int displayedWindowIndex: -1
+    property real closingTipX: 0
+    property bool resettingPresentation: false
+    property bool bubbleRevealed: false
+    readonly property bool bubbleShown: panelActive && windowsExpanded && (previewsReady || bubbleRevealed)
+    readonly property bool bubbleVisible: bubble.opacity > 0
+    readonly property bool previewsReady: visibleWindowCards.length > 0
+        && visibleWindowCards.every(function(card) { return card.presentationReady })
+    readonly property var visibleWindowCards: Array.from(windows.contentItem.children).filter(function(card) {
+        return card.windowRecord !== undefined && card.x + card.width > windows.contentX
+            && card.x < windows.contentX + windows.width
+    })
     property var applicationKeys: []
     property var windowKeys: []
     readonly property int stripHeight: 152
     readonly property real preferredWidth: Math.max(240, candidates.length * 104 + 32,
-        windowsExpanded ? Math.min(3, windowCandidates.length) * 288 + 32 : 0)
-    readonly property real preferredHeight: stripHeight + (windowsExpanded ? 256 : 0)
+        windowsExpanded || bubbleVisible ? Math.min(3, displayedWindows.length) * 288 + 32 : 0)
+    readonly property real preferredHeight: stripHeight + (windowsExpanded || bubbleVisible ? 256 : 0)
+    readonly property real bubbleOpacity: bubble.opacity
     readonly property real applicationContentX: apps.contentX - apps.originX
     readonly property real windowContentX: windows.contentX - windows.originX
     signal candidateClicked(int index)
@@ -31,21 +46,58 @@ Item {
         if (selectedWindowIndex >= 0) windows.positionViewAtIndex(selectedWindowIndex, ListView.Contain)
     }
     onSelectedIndexChanged: Qt.callLater(reveal)
-    onSelectedWindowIndexChanged: Qt.callLater(reveal)
+    onSelectedWindowIndexChanged: {
+        if (windowsExpanded && panelActive) displayedWindowIndex = selectedWindowIndex
+        Qt.callLater(reveal)
+    }
+    onWindowsExpandedChanged: {
+        bubbleRevealed = false
+        if (windowsExpanded) syncWindows()
+        else closingTipX = outline.currentTipX
+    }
+    onBubbleShownChanged: if (!resettingPresentation) animateBubble()
+    onPanelActiveChanged: if (panelActive) {
+        resetPresentation()
+        syncWindows()
+    }
     onCandidatesChanged: {
         const keys = candidates.map(function(app) { return app.key })
         if (JSON.stringify(keys) !== JSON.stringify(applicationKeys)) applicationKeys = keys
         Qt.callLater(reveal)
     }
     onWindowCandidatesChanged: {
-        const keys = windowCandidates.map(function(window) { return window.key })
-        if (JSON.stringify(keys) !== JSON.stringify(windowKeys)) windowKeys = keys
+        if (windowsExpanded || !bubbleVisible) syncWindows()
         Qt.callLater(reveal)
     }
     onWidthChanged: Qt.callLater(reveal)
+    function syncWindows(): void {
+        displayedWindows = windowCandidates
+        displayedWindowIndex = selectedWindowIndex
+        const keys = displayedWindows.map(function(window) { return window.key })
+        if (JSON.stringify(keys) !== JSON.stringify(windowKeys)) windowKeys = keys
+    }
+    function resetPresentation(): void {
+        resettingPresentation = true
+        bubbleFade.stop()
+        bubble.opacity = 0
+        bubbleRevealed = false
+        Qt.callLater(function() {
+            switcher.resettingPresentation = false
+            switcher.animateBubble()
+        })
+    }
+    function animateBubble(): void {
+        bubbleFade.stop()
+        bubbleFade.to = bubbleShown ? 1 : 0
+        if (bubble.opacity !== bubbleFade.to) bubbleFade.start()
+    }
 
     Rectangle {
         id: strip
+        opacity: switcher.panelActive ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: Commons.Style.duration(switcher.panelActive ? 0 : 120); easing.type: Easing.OutCubic }
+        }
         anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
         width: Math.min(switcher.width, Math.max(240, switcher.candidates.length * 104 + 32))
         height: switcher.stripHeight
@@ -157,9 +209,25 @@ Item {
 
     Item {
         id: bubble
+        objectName: "windowBubble"
         anchors { top: strip.bottom; topMargin: 16; left: parent.left; right: parent.right }
         height: 240
-        visible: switcher.windowsExpanded
+        visible: switcher.panelActive || opacity > 0
+        enabled: switcher.panelActive && switcher.windowsExpanded
+        opacity: 0
+        scale: 0.97 + 0.03 * opacity
+        transformOrigin: Item.Top
+        NumberAnimation {
+            id: bubbleFade
+            target: bubble
+            property: "opacity"
+            duration: Commons.Style.duration(switcher.bubbleShown ? 180 : 120)
+            easing.type: Easing.OutCubic
+        }
+        onOpacityChanged: {
+            if (opacity > 0 && switcher.panelActive && switcher.windowsExpanded) switcher.bubbleRevealed = true
+            if (opacity === 0 && !switcher.windowsExpanded) switcher.syncWindows()
+        }
         Shape {
             id: outline
             anchors.fill: parent
@@ -167,8 +235,9 @@ Item {
             readonly property real corner: Math.max(0, Math.min(theme.cornerRadius + 6, width / 2 - 0.5, height / 2 - 0.5))
             readonly property real tipSize: 8 * Math.SQRT2
             readonly property var selectedItem: apps.itemAtIndex(switcher.selectedIndex)
-            readonly property real tipX: Math.max(corner + tipSize + 0.5, Math.min(width - corner - tipSize - 0.5,
+            readonly property real currentTipX: Math.max(corner + tipSize + 0.5, Math.min(width - corner - tipSize - 0.5,
                 strip.x + 16 + (selectedItem ? selectedItem.x - apps.contentX + selectedItem.width / 2 : apps.width / 2)))
+            readonly property real tipX: switcher.windowsExpanded ? currentTipX : switcher.closingTipX
             // One filled outline keeps the pointer join seamless, including with translucent themes.
             ShapePath {
                 strokeWidth: 1
@@ -217,10 +286,11 @@ Item {
                 required property int index
                 width: Math.min(276, windows.width)
                 height: windows.height
-                windowRecord: switcher.windowCandidates.find(function(window) { return window.key === windowCard.modelData }) || null
+                windowRecord: switcher.displayedWindows.find(function(window) { return window.key === windowCard.modelData }) || null
                 previewProvider: switcher.previewProvider
-                selected: index === switcher.selectedWindowIndex
-                previewEnabled: switcher.visible && switcher.windowsExpanded
+                selected: index === switcher.displayedWindowIndex
+                previewEnabled: switcher.visible && (switcher.bubbleVisible || switcher.panelActive
+                    && (switcher.windowsExpanded || switcher.windowCandidates.length > 1))
                     && x + width > windows.contentX && x < windows.contentX + windows.width
                 onClicked: switcher.windowClicked(index)
             }

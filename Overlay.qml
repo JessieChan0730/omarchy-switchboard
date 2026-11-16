@@ -16,6 +16,8 @@ Item {
     property var shell: null
     property var manifest: null
     property bool opened: false
+    property bool fadingOut: false
+    property var exitVisual: ({})
     readonly property bool panelVisible: opened && !panelRevealDelay.running
     property string mode: "window"
     property var snapshot: ({windows: [], workspaces: [], monitors: []})
@@ -38,6 +40,8 @@ Item {
 
     function open(payloadJson: string): void {
         if (activation.busy || pendingActivation) { pendingOpenRequest = payloadJson; return }
+        exitAnimation.stop()
+        fadingOut = false
         // qmllint disable missing-property
         const next = Logic.parseOpenRequest(payloadJson)
         // qmllint enable missing-property
@@ -91,6 +95,13 @@ Item {
         })
     }
     function close(): void {
+        if (!opened) return
+        if (mode === "window" && panelVisible && windowView.bubbleVisible && Commons.Style.duration(120) > 0) {
+            exitVisual = {candidates: candidates, windows: applicationWindows, selectedIndex: session.selectedIndex,
+                selectedWindowIndex: windowSession.selectedIndex, expanded: windowsExpanded}
+            fadingOut = true
+            exitAnimation.restart()
+        }
         opened = false
         panelRevealDelay.stop()
         modifierTimer.stop()
@@ -225,7 +236,7 @@ Item {
     }
     Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
     Components.Theme { id: theme }
-    Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.panelVisible && (root.mode === "workspace" || root.windowsExpanded) }
+    Previews.PreviewProvider { id: previews; adapter: desktopAdapter; active: root.panelVisible || root.fadingOut }
     Controllers.ConfigController {
         id: config
         shell: root.shell
@@ -271,6 +282,11 @@ Item {
     // Delay only the picture. The transparent surface already owns input, so
     // immediate Tab/Escape and Alt release still reach the current session.
     Timer { id: panelRevealDelay; interval: 100 }
+    Timer {
+        id: exitAnimation
+        interval: Commons.Style.duration(120)
+        onTriggered: { root.fadingOut = false; root.exitVisual = ({}) }
+    }
     Timer { id: modifierTimer; interval: 45; repeat: true; running: root.opened && root.request.holdToConfirm; onTriggered: root.queryModifiers() }
     Timer {
         interval: 200
@@ -316,8 +332,9 @@ Item {
 
     Ui.OverlayWindow {
         id: overlay
-        shown: root.opened
+        shown: root.opened || root.fadingOut
         shownKeyboardFocus: root.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        mask: Region { item: root.opened ? overlay.contentItem : null }
         // Held Super would otherwise let compositor shortcuts consume arrows.
         // The inhibitor belongs to this surface and is released when it closes.
         ShortcutInhibitor {
@@ -326,7 +343,11 @@ Item {
             enabled: root.opened
         }
         Rectangle {
-            opacity: root.panelVisible ? 1 : 0
+            objectName: "switchboardPanel"
+            // A direct window-preview entry reveals the strip and previews
+            // together once capture is ready; its input surface already works.
+            opacity: root.fadingOut || root.panelVisible && (root.mode !== "window" || root.request.mode !== "app-windows"
+                || !root.windowsExpanded || windowView.previewsReady || windowView.bubbleRevealed) ? 1 : 0
             x: (parent.width - width) / 2
             y: root.mode === "workspace" ? (parent.height - height) / 2
                 : Math.min((parent.height - windowView.stripHeight) / 2, parent.height - height - 32)
@@ -358,12 +379,13 @@ Item {
                 Components.WindowSwitcher {
                     id: windowView
                     anchors.fill: parent
-                    visible: root.panelVisible && root.mode === "window"
-                    candidates: root.mode === "window" ? root.candidates : []
-                    selectedIndex: session.selectedIndex
-                    windowCandidates: root.applicationWindows
-                    selectedWindowIndex: windowSession.selectedIndex
-                    windowsExpanded: root.windowsExpanded
+                    visible: (root.panelVisible || root.fadingOut) && root.mode === "window"
+                    panelActive: root.panelVisible
+                    candidates: root.mode !== "window" ? [] : root.fadingOut ? root.exitVisual.candidates : root.candidates
+                    selectedIndex: root.fadingOut ? root.exitVisual.selectedIndex : session.selectedIndex
+                    windowCandidates: root.fadingOut ? root.exitVisual.windows : root.applicationWindows
+                    selectedWindowIndex: root.fadingOut ? root.exitVisual.selectedWindowIndex : windowSession.selectedIndex
+                    windowsExpanded: root.fadingOut ? root.exitVisual.expanded : root.windowsExpanded
                     previewProvider: previews
                     emptyText: strings.t(root.errorKey || "window.empty")
                     foregroundColor: theme.foregroundColor
@@ -395,6 +417,7 @@ Item {
     }
     Component.onDestruction: {
         activateTimer.stop()
+        exitAnimation.stop()
         panelRevealDelay.stop()
         modifierTimer.stop()
         activation.cancel()

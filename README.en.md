@@ -32,6 +32,8 @@ Installing and enabling the plugin through Omarchy activates the switching short
 
 Alt+Tab centers each application name below its icon and truncates long names with an ellipsis. Keeping an application with multiple windows highlighted for 700ms automatically opens its window previews, with its most recently used window selected first. Use `Alt+~` / `Alt+Shift+~` to choose another window. Tab moves to another application, collapses the previews, and restarts the delay; releasing Alt activates the selected window.
 
+Window bubbles fade and gently scale in and out, following the system animation setting. Opening window previews directly reveals the application strip and previews together once the first frame is ready, avoiding a brief icon flash. Confirming or cancelling releases input focus immediately.
+
 ## Installation
 
 ### Install through Omarchy (recommended)
